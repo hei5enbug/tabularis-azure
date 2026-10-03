@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { CosmosClient, CosmosDbDiagnosticLevel, type CosmosClientOptions } from "@azure/cosmos";
 import { DriverError, assertRequestActive } from "../runtime/errors.js";
 import type { RpcRequestContext } from "../runtime/contracts.js";
-import { observeTransportCharge } from "../runtime/metrics.js";
+import { admitRequestTransport } from "../runtime/metrics.js";
 import { validateEndpoint, type ConnectionSettings } from "./settings.js";
 export { normalizeConnectionSettings, validateEndpoint } from "./settings.js";
 export type { ConnectionSettings } from "./settings.js";
@@ -50,11 +50,11 @@ export function createClientProvider(options: ClientProviderOptions = {}): Clien
   const factory = options.createClient ?? ((settings) => new CosmosClient(settings));
   const baseTransport = options.httpClient ?? (sdkRequire("@azure/core-rest-pipeline") as { createDefaultHttpClient: () => NonNullable<CosmosClientOptions["httpClient"]> }).createDefaultHttpClient();
   const transport: NonNullable<CosmosClientOptions["httpClient"]> = { async sendRequest(request) {
+    const lease = admitRequestTransport();
+    if (!lease.allowed) throw new DriverError("CANCELLED", "The request transport is closed.", "not_applied");
     let response;
-    try { response = await baseTransport.sendRequest(request); }
-    catch (error) { observeTransportCharge(undefined); throw error; }
-    observeTransportCharge(response.headers.get("x-ms-request-charge"));
-    return response;
+    try { response = await baseTransport.sendRequest(request); return response; }
+    finally { lease.complete(response?.headers.get("x-ms-request-charge")); }
   } };
   const entries = new Map<string, { fingerprint: string; client: CosmosClient; state: { auth: TransientAuthContext; active: boolean; settings: ConnectionSettings } }>();
   return {

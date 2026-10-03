@@ -5,6 +5,8 @@ import type { RpcRequestContext } from "./contracts.js";
 const requestMetrics = new AsyncLocalStorage<MetricsAccumulator>();
 export function withRequestMetrics<T>(context: RpcRequestContext, action: () => T): T { return context.metrics ? requestMetrics.run(context.metrics, action) : action(); }
 export function observeTransportCharge(charge: string | undefined): void { requestMetrics.getStore()?.addTransport({ headers: { "x-ms-request-charge": charge } }); }
+export interface RequestTransportLease { allowed: boolean; complete(charge?: string): void }
+export function admitRequestTransport(): RequestTransportLease { return requestMetrics.getStore()?.admitTransport() ?? { allowed: true, complete() {} }; }
 
 function object(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null ? value as Record<string, unknown> : undefined;
@@ -35,14 +37,53 @@ export class MetricsAccumulator {
   private unknown = false;
   private retries = 0;
   private transportObserved = false;
+  private transportSealed = false;
+  private pendingTransports = 0;
+  private transportWaiters = new Set<() => void>();
+  private finalMetrics: Metrics | undefined;
   constructor(private readonly startedAt = Date.now(), private readonly now: () => number = Date.now) {}
   add(value: unknown): void {
+    if (this.finalMetrics) return;
     if (!this.transportObserved) this.addCharge(value);
     this.retries += sdkRetryCount(value);
   }
   addTransport(value: unknown): void {
+    if (this.finalMetrics) return;
     this.transportObserved = true;
     this.addCharge(value);
+  }
+  admitTransport(): RequestTransportLease {
+    if (this.transportSealed) return { allowed: false, complete() {} };
+    this.transportObserved = true;
+    this.pendingTransports++;
+    let completed = false;
+    return { allowed: true, complete: (charge) => {
+      if (completed) return;
+      completed = true;
+      this.addTransport({ headers: { "x-ms-request-charge": charge } });
+      this.pendingTransports--;
+      if (!this.pendingTransports) for (const resolve of [...this.transportWaiters]) resolve();
+    } };
+  }
+  sealTransport(): void { this.transportSealed = true; }
+  async drainTransport(signal: AbortSignal): Promise<void> {
+    if (signal.aborted) throw signal.reason;
+    if (!this.pendingTransports) return;
+    await new Promise<void>((resolve, reject) => {
+      const cleanup = () => { this.transportWaiters.delete(done); signal.removeEventListener("abort", aborted); };
+      const done = () => { cleanup(); resolve(); };
+      const aborted = () => { cleanup(); reject(signal.reason); };
+      this.transportWaiters.add(done);
+      signal.addEventListener("abort", aborted, { once: true });
+    });
+  }
+  finalize(): Metrics {
+    this.sealTransport();
+    if (!this.finalMetrics) {
+      if (this.pendingTransports) this.unknown = true;
+      this.finalMetrics = this.snapshot();
+    }
+    return this.snapshot();
   }
   private addCharge(value: unknown): void {
     const charge = measuredCharge(value);
@@ -52,6 +93,7 @@ export class MetricsAccumulator {
   get knownCharge(): number { return this.charge; }
   get chargeIsComplete(): boolean { return this.measured && !this.unknown; }
   snapshot(): Metrics {
+    if (this.finalMetrics) return { ...this.finalMetrics };
     return { elapsed_ms: Math.max(0, Math.floor(this.now() - this.startedAt)), request_charge: this.measured && !this.unknown ? this.charge : null, retry_count: this.retries };
   }
 }

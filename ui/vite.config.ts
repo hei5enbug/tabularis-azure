@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   test: { environment: "jsdom", include: ["tests/**/*.test.tsx"] },
   build: {
-    lib: { entry: "src/index.tsx", formats: ["iife"], name: "__tabularis_plugin__", fileName: () => "index.js" },
+    lib: { entry: "src/index.tsx", formats: ["iife"], name: "__tabularis_plugin__", fileName: () => "index.js", cssFileName: "style" },
     rollupOptions: {
       external: ["react", "react/jsx-runtime", "@tabularis/plugin-api"],
       output: { globals: { react: "React", "react/jsx-runtime": "ReactJSXRuntime", "@tabularis/plugin-api": "__TABULARIS_API__" } },

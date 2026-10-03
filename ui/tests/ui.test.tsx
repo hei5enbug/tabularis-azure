@@ -26,7 +26,7 @@ function fakeService(handler?: Handler) {
     const value = handler ? await handler(request, options) : request.operation === 'connection.list' ? response({ connections: [connection] }) : response(null);
     return checkedResponse({ ...value, request_id: request.request_id, connection_id: request.connection_id || null });
   });
-  return { call, capabilities: vi.fn(async () => ({ service_protocol: 1 as const, operations: [...operationNames], documents_v1: true, spatial_v1: false, cancel_v1: true })), importCredential: vi.fn<UsePluginServiceReturn['importCredential']>(async () => response({ credential_ref: 'opaque' })), subscribeMap: vi.fn(async () => () => undefined) };
+  return { call, executeWrite: vi.fn<UsePluginServiceReturn['executeWrite']>(async () => { throw new Error('Query writes are unavailable in this Cosmos fixture.'); }), saveArtifact: vi.fn(async () => false), capabilities: vi.fn(async () => ({ service_protocol: 1 as const, operations: [...operationNames], documents_v1: true, spatial_v1: false, cancel_v1: true })), importCredential: vi.fn<UsePluginServiceReturn['importCredential']>(async () => response({ credential_ref: 'opaque' })), subscribeMap: vi.fn(async () => () => undefined) };
 }
 async function settled(): Promise<void> { await act(async () => { await Promise.resolve(); }); }
 async function pointRead(): Promise<void> {

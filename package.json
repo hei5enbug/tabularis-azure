@@ -1,6 +1,7 @@
 {
   "name": "@tabularis/cosmos-nosql",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,8 +16,8 @@
     "test:ui": "corepack pnpm --dir ui test",
     "build:ui": "corepack pnpm --dir ui build",
     "test:live": "node --input-type=module -e \"throw new Error('CAPABILITY_UNAVAILABLE: live harness is not connected')\"",
-    "package:plugin": "node --input-type=module -e \"throw new Error('CAPABILITY_UNAVAILABLE: runtime packaging is not connected')\"",
-    "test:install": "node --input-type=module -e \"throw new Error('CAPABILITY_UNAVAILABLE: install harness is not connected')\""
+    "package:plugin": "node scripts/package/cli.mjs",
+    "test:install": "node --test tests/install/*.test.mjs"
   },
   "dependencies": {
     "@azure/cosmos": "4.10.1",

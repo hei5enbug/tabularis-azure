@@ -4,7 +4,7 @@
   "kind": "driver",
   "engine": "cosmos-nosql",
   "version": "0.1.0",
-  "description": "Cosmos NoSQL driver bootstrap. Data-plane handlers are unavailable.",
+  "description": "Azure Cosmos DB for NoSQL driver with document editing, paged queries, and connection metadata.",
   "executable": "cosmos-nosql",
   "connection_metadata": true,
   "service_protocol": 1,
@@ -17,12 +17,12 @@
     "alter_primary_key": false,
     "manage_tables": false,
     "explain": false,
-    "documents_v1": false,
-    "query_page_v1": false,
-    "cancel_v1": false,
-    "metadata_discovery": false
+    "documents_v1": true,
+    "query_page_v1": true,
+    "cancel_v1": true,
+    "metadata_discovery": true
   },
-  "data_types": [],
+  "data_types": [{ "name": "JSON", "category": "json" }],
   "settings": [
     {
       "key": "endpoint",
@@ -54,17 +54,17 @@
       "key": "client_id",
       "label": "Client ID",
       "type": "string"
-    },
-    {
-      "key": "credential_ref",
-      "label": "Credential reference",
-      "type": "string"
     }
   ],
-  "min_runtime_version": "0.26.0",
+  "min_runtime_version": "0.26.1-spatial.1",
   "ui_extensions": [
     {
       "slot": "connection-modal.extra_fields",
+      "module": "ui/dist/index.js",
+      "driver": "cosmos-nosql"
+    },
+    {
+      "slot": "data-grid.toolbar.actions",
       "module": "ui/dist/index.js",
       "driver": "cosmos-nosql"
     },

@@ -15,7 +15,7 @@
     "test:protocol": "corepack pnpm build && node --test tests/protocol/*.test.mjs",
     "test:ui": "corepack pnpm --dir ui test",
     "build:ui": "corepack pnpm --dir ui build",
-    "test:live": "node --input-type=module -e \"throw new Error('CAPABILITY_UNAVAILABLE: live harness is not connected')\"",
+    "test:live": "node scripts/live/cli.mjs",
     "package:plugin": "node scripts/package/cli.mjs",
     "test:install": "node --test tests/install/*.test.mjs"
   },

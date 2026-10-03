@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 function runDriver(frames) {
   return new Promise((resolve, reject) => {
     const driver = fileURLToPath(new URL("../../dist/index.js", import.meta.url));
-    const child = execFile(process.execPath, [driver], { timeout: 5000, env: { PATH: process.env.PATH, HOME: process.env.HOME, TMPDIR: process.env.TMPDIR } }, (error, stdout, stderr) => error ? reject(error) : resolve({ stdout, stderr }));
+    const child = execFile(process.execPath, [driver], { timeout: 5000, env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR } }, (error, stdout, stderr) => error ? reject(error) : resolve({ stdout, stderr }));
     child.stdin.end(frames);
   });
 }

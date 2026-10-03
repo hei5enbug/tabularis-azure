@@ -34,7 +34,7 @@ test('패키지는 고정 레이아웃과 중첩 버전 및 원문 라이선스�
   assert.ok(archive.entries.every(item => item.compression === 8 && item.time.join(',') === '1980,1,1,0,0,0'));
   assert.ok(archive.entries.some(item => item.name === 'node_modules/first/node_modules/shared/package.json'));
   assert.ok(archive.entries.some(item => item.name === 'node_modules/second/node_modules/shared/package.json'));
-  assert.ok(archive.entries.some(item => item.name === 'node_modules/first/node_modules/peer/package.json'));
+  assert.ok(archive.entries.some(item => item.name === 'node_modules/peer/package.json'));
   assert.ok(archive.entries.some(item => item.name === 'node_modules/installedOptional/package.json'));
   assert.ok(archive.entries.some(item => item.name === 'node_modules/@tabularis/service-contracts/schemas/fixture.json'));
   assert.ok(!archive.entries.some(item => /development|\/tests\/|\.env|missingPeer|absent/.test(item.name)));
@@ -50,6 +50,38 @@ test('패키지는 고정 레이아웃과 중첩 버전 및 원문 라이선스�
 function packageTwice(options) {
   return [packageBundle(options), packageBundle({ ...options, output: `${options.output}.second.zip` })];
 }
+
+function packageLicense(options) {
+  packageBundle(options);
+  const result = python(['-c', `import json,sys,zipfile
+with zipfile.ZipFile(sys.argv[1]) as archive:
+ print(json.dumps({'license':archive.read('LICENSE').decode('utf-8'),'release':json.loads(archive.read('release.json'))}))`, options.output]);
+  if (result.status !== 0) throw new Error('root license verification failed');
+  return JSON.parse(result.stdout);
+}
+
+test('패키지는 플러그인 자체 라이선스 원문과 파일 해시를 포함한다', t => {
+  // given
+  const value = fixture(t);
+  const expected = fs.readFileSync(path.join(value.source, 'LICENSE'));
+  // when
+  const archive = packageLicense(value.options);
+  // then
+  assert.equal(archive.license, expected.toString('utf8'));
+  assert.deepEqual(archive.release.files.find(file => file.path === 'LICENSE'), { path: 'LICENSE', bytes: expected.length, sha256: sha256(expected) });
+});
+
+test('플러그인 자체 라이선스가 없으면 ZIP을 게시하지 않는다', t => {
+  // given
+  const value = fixture(t);
+  fs.unlinkSync(path.join(value.source, 'LICENSE'));
+  // when
+  const result = capture(() => packageBundle(value.options));
+  // then
+  assert.equal(result.error, 'ASSET_MISSING');
+  assert.equal(fs.existsSync(value.options.output), false);
+  assert.equal(fs.existsSync(`${value.options.output}.sha256`), false);
+});
 
 test('같은 입력으로 만든 두 ZIP의 SHA256이 같다', t => {
   // given

@@ -39,6 +39,7 @@ export function fixture(t) {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const source = path.join(root, 'source');
   write(path.join(source, 'manifest.json'), ACCEPTED_MANIFEST);
+  write(path.join(source, 'LICENSE'), fs.readFileSync(new URL('../../LICENSE', import.meta.url)));
   write(path.join(source, 'package.json'), { name: 'fixture-driver', version: '0.1.0', type: 'module', dependencies: { '@azure/cosmos': '4.10.1', '@tabularis/service-contracts': '1.0.0', first: '1', second: '1', cycle: '1' }, optionalDependencies: { absent: '1', installedOptional: '1' }, devDependencies: { development: '1' } });
   write(path.join(source, 'dist', 'index.js'), `import cosmos from '@azure/cosmos';\nimport { schema } from '@tabularis/service-contracts';\nimport first from 'first';\nimport second from 'second';\nimport cycle from 'cycle';\nimport { helper } from './helper.js';\nprocess.stdout.write(JSON.stringify({cosmos,schema,first,second,cycle,helper,argv:process.argv.slice(2),node:process.version,envAbsent:['NODE_OPTIONS','NODE_PATH','NODE_TLS_REJECT_UNAUTHORIZED','NODE_EXTRA_CA_CERTS','NODE_USE_SYSTEM_CA','SSL_CERT_FILE','SSL_CERT_DIR','OPENSSL_CONF'].every(k=>process.env[k]===undefined)})+'\\n');\nprocess.stdin.setEncoding('utf8');process.stdin.on('data',chunk=>process.stdout.write(chunk));\n`);
   write(path.join(source, 'dist', 'helper.js'), 'export const helper = "relative import works";');

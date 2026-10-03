@@ -53,6 +53,7 @@ export function packageBundle({ platform, arch, source, launcher, runtimeArchive
     const stage = new Stage(ownedStage, limits);
     stage.add('.tabularium', `${JSON.stringify(manifest, null, 2)}\n`);
     stage.add('package.json', '{"type":"module"}\n');
+    stage.copy(requiredAsset(source, 'LICENSE'), 'LICENSE');
     stage.copy(regularWithin(source, 'dist/index.js'), 'dist/driver.mjs');
     stage.copyTree(path.join(source, 'dist'), 'dist', relative => relative === 'index.js');
     stage.copy(launcher, platform === 'win32' ? 'cosmos-nosql.exe' : 'cosmos-nosql', 0o755);

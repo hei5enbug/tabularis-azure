@@ -1,0 +1,85 @@
+{
+  "id": "cosmos-nosql",
+  "name": "cosmos-nosql",
+  "kind": "driver",
+  "engine": "cosmos-nosql",
+  "version": "0.1.0",
+  "description": "Cosmos NoSQL driver bootstrap. Data-plane handlers are unavailable.",
+  "executable": "cosmos-nosql",
+  "connection_metadata": true,
+  "service_protocol": 1,
+  "capabilities": {
+    "schemas": false,
+    "views": false,
+    "routines": false,
+    "file_based": false,
+    "identifier_quote": "\"",
+    "alter_primary_key": false,
+    "manage_tables": false,
+    "explain": false,
+    "documents_v1": false,
+    "query_page_v1": false,
+    "cancel_v1": false,
+    "metadata_discovery": false
+  },
+  "data_types": [],
+  "settings": [
+    {
+      "key": "endpoint",
+      "label": "HTTPS endpoint",
+      "type": "string",
+      "required": true
+    },
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "string"
+    },
+    {
+      "key": "auth_mode",
+      "label": "Authentication",
+      "type": "select",
+      "options": [
+        "account_key",
+        "entra_user",
+        "entra_service_principal"
+      ]
+    },
+    {
+      "key": "tenant_id",
+      "label": "Tenant ID",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "label": "Client ID",
+      "type": "string"
+    },
+    {
+      "key": "credential_ref",
+      "label": "Credential reference",
+      "type": "string"
+    }
+  ],
+  "min_runtime_version": "0.26.0",
+  "ui_extensions": [
+    {
+      "slot": "connection-modal.extra_fields",
+      "module": "ui/dist/index.js",
+      "driver": "cosmos-nosql"
+    },
+    {
+      "slot": "row-edit-modal.footer.before",
+      "module": "ui/dist/index.js",
+      "driver": "cosmos-nosql"
+    },
+    {
+      "slot": "row-editor-sidebar.header.actions",
+      "module": "ui/dist/index.js",
+      "driver": "cosmos-nosql"
+    }
+  ],
+  "paradigms": [
+    "document"
+  ]
+}

@@ -65,7 +65,8 @@ export function createConnectionHandlers(clients: ClientProvider, options: { que
   });
   return {
     initialize: async (value) => {
-      onlyKeys(value, ["settings"]);
+      onlyKeys(value, ["settings", "service_protocol"]);
+      if (Object.hasOwn(value, "service_protocol") && value.service_protocol !== 1) throw new DriverError("PROTOCOL_MISMATCH", "The requested service protocol is unsupported.");
       if (value.settings !== undefined && !jsonObject(value.settings)) throw new DriverError("INVALID_ARGUMENT", "Plugin settings must be an object.");
       if (jsonObject(value.settings)) {
         onlyKeys(value.settings, ["endpoint", "database", "auth_mode", "tenant_id", "client_id", "credential_ref"]);
@@ -75,7 +76,7 @@ export function createConnectionHandlers(clients: ClientProvider, options: { que
           if (key === "auth_mode" && !["account_key", "entra_user", "entra_service_principal"].includes(field)) throw new DriverError("INVALID_ARGUMENT", "The authentication mode is unsupported.");
         }
       }
-      return { service_capabilities: { protocol_version: 1, documents_v1: true, query_page_v1: options.query_page_v1 === true, cancel_v1: true, sessions_v1: false } };
+      return { service_capabilities: { protocol_version: 1, documents_v1: true, query_page_v1: options.query_page_v1 === true, cancel_v1: true, sessions_v1: false, ...(Object.hasOwn(value, "service_protocol") ? { service_protocol: 1 } : {}) } };
     },
     ping: testConnection,
     shutdown: async (value) => { onlyKeys(value, []); return null; },
@@ -101,8 +102,8 @@ export function createConnectionHandlers(clients: ClientProvider, options: { que
       if (Object.hasOwn(value, "params")) onlyKeys(value, ["params", "driver_context", "schema", "table"]);
       const table = jsonObject(value.table) ? value.table : { database: context.connection?.database ?? null, schema: value.schema ?? null, table: value.table ?? null };
       if (table.schema !== null && table.schema !== undefined) throw new DriverError("UNSUPPORTED_OPERATION", "Cosmos schemas are unsupported.");
-      await getContainerMetadata(clients, context, databaseName(table, context), boundedName(table.table));
-      return columns();
+      const { metadata } = await getContainerMetadata(clients, context, databaseName(table, context), boundedName(table.table));
+      return context.native_v1 ? { columns: columns(), partition_key_paths: metadata.partition_key_paths, partition_key_kind: metadata.partition_key_kind, partition_key_version: metadata.partition_key_version, system_key: metadata.system_key } : columns();
     }),
     get_connection_metadata: boundary(async (value, context) => {
       onlyKeys(value, ["params", "driver_context"]);

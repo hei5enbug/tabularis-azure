@@ -11,7 +11,7 @@ function runDriver(frames) {
   });
 }
 
-test("한글 RPC 프레임은 성공을 가장하지 않고 독립 오류로 응답한다", async () => {
+test("production 진입점은 한글 초기화와 미지원 요청을 독립 응답한다", async () => {
   // given
   const frames = JSON.stringify({ jsonrpc: "2.0", id: "한글", method: "initialize", params: {} }) + "\n" + JSON.stringify({ jsonrpc: "2.0", id: 2, method: "unsupported" }) + "\n";
 
@@ -21,9 +21,8 @@ test("한글 RPC 프레임은 성공을 가장하지 않고 독립 오류로 응
   // then
   assert.equal(actual.stderr, "");
   assert.equal(actual.stdout.trim().split("\n").length, 2);
-  assert.equal(JSON.parse(actual.stdout.split("\n")[0]).id, "한글");
-  assert.equal(JSON.parse(actual.stdout.split("\n")[0]).error.data.code, "CAPABILITY_UNAVAILABLE");
-  assert.equal(JSON.parse(actual.stdout.split("\n")[1]).error.data.code, "UNSUPPORTED_OPERATION");
+  assert.deepEqual(actual.stdout.trim().split("\n").map((line) => JSON.parse(line)).find((response) => response.id === "한글").result.service_capabilities, { protocol_version: 1, documents_v1: true, query_page_v1: true, cancel_v1: true, sessions_v1: false });
+  assert.equal(actual.stdout.trim().split("\n").map((line) => JSON.parse(line)).find((response) => response.id === 2).error.data.code, "UNSUPPORTED_OPERATION");
 });
 
 test("잘못된 JSON은 입력 원문을 노출하지 않고 parse 오류로 응답한다", async () => {

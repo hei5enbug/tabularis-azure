@@ -11,6 +11,7 @@ export { normalizeConnectionSettings, validateEndpoint } from "./settings.js";
 export type { ConnectionSettings } from "./settings.js";
 
 export const COSMOS_SCOPE = "https://cosmos.azure.com/.default";
+export const MAX_CACHED_CLIENTS = 4096;
 type SdkLogger = { AzureLogger: { log: (...args: unknown[]) => void }; setLogLevel: (level?: string) => void };
 const sdkRequire = createRequire(import.meta.resolve("@azure/cosmos"));
 const loggerPackage = sdkRequire.resolve("@azure/logger/package.json");
@@ -65,6 +66,7 @@ export function createClientProvider(options: ClientProviderOptions = {}): Clien
       const authIdentity = auth.kind === "account_key" ? createHash("sha256").update(auth.account_key).digest("hex") : [auth.tenant_id, auth.client_id, auth.principal_id, auth.scope];
       const fingerprint = JSON.stringify([context.settings, auth.kind, auth.identity, authIdentity]);
       let entry = entries.get(context.connection_id);
+      if (!entry && entries.size >= MAX_CACHED_CLIENTS) throw new DriverError("RESOURCE_LIMIT", "The driver client cache is full.");
       if (entry && entry.fingerprint !== fingerprint) { entry.state.active = false; entry.client.dispose(); entries.delete(context.connection_id); entry = undefined; }
       if (entry) {
         if (auth.kind !== "entra_token" || entry.state.auth.kind !== "entra_token" || auth.expires_at_ms >= entry.state.auth.expires_at_ms) entry.state.auth = auth;

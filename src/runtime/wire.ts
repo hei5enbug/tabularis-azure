@@ -30,7 +30,8 @@ export function resolveWireContext(request: RpcRequest): ResolvedContext {
   if (controlMethods.has(request.method) && request.method !== "ping") return { connection_id: "control", request_id: String(request.id ?? "notification"), deadline_ms: 30_000, read_only: true };
   const wire = params.driver_context;
   if (!jsonObject(wire)) throw new DriverError("AUTH_REQUIRED", "A host-provided driver context is required.");
-  onlyKeys(wire, ["protocol_version", "connection_id", "request_id", "deadline_ms", "read_only", "auth", "session_handle"]);
+  const invalidate = request.method === "service_invalidate_auth";
+  onlyKeys(wire, invalidate ? ["protocol_version", "connection_id", "request_id", "deadline_ms", "read_only"] : ["protocol_version", "connection_id", "request_id", "deadline_ms", "read_only", "auth", "session_handle"]);
   if (wire.protocol_version !== 1) throw new DriverError("PROTOCOL_MISMATCH", "The driver context protocol version is unsupported.");
   const deadline = wire.deadline_ms ?? 30_000;
   if (typeof deadline !== "number" || !Number.isSafeInteger(deadline) || deadline < 1 || deadline > 120_000) throw new DriverError("INVALID_ARGUMENT", "The request deadline is invalid.");
@@ -40,7 +41,15 @@ export function resolveWireContext(request: RpcRequest): ResolvedContext {
     onlyKeys(params, ["params", "driver_context", "input"]);
     if (!jsonObject(params.input)) throw new DriverError("INVALID_ARGUMENT", "A public operation input object is required.");
   }
-  const context: ResolvedContext = { connection_id: requiredString(wire.connection_id), request_id: requiredString(wire.request_id), deadline_ms: deadline, read_only: wire.read_only ?? true, connection: normalizeConnectionSettings(params.params) };
+  const context: ResolvedContext = { connection_id: requiredString(wire.connection_id), request_id: requiredString(wire.request_id), deadline_ms: deadline, read_only: wire.read_only ?? true, native_v1: isV1Request(request) };
+  if (invalidate) {
+    onlyKeys(params, ["params", "driver_context", "input"]);
+    if (!jsonObject(params.input)) throw new DriverError("INVALID_ARGUMENT", "An empty invalidate input object is required.");
+    onlyKeys(params.input, []);
+    if (params.params.connection_id !== undefined && params.params.connection_id !== null && params.params.connection_id !== context.connection_id) throw new DriverError("INVALID_ARGUMENT", "The connection identity does not match this request.");
+    return context;
+  }
+  context.connection = normalizeConnectionSettings(params.params);
   const auth = transientAuth(wire.auth);
   if (auth) context.auth = auth;
   if (wire.session_handle !== undefined) context.session_handle = requiredString(wire.session_handle);

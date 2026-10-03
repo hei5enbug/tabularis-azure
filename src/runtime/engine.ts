@@ -4,7 +4,7 @@ import { createClientProvider, type ClientProvider } from "../connection/index.j
 import { createConnectionHandlers } from "../connection/handlers.js";
 import { createDocumentHandlers } from "../documents/index.js";
 import { rpcMethods, type ResolvedContext, type RpcFailure, type RpcHandler, type RpcRequest, type RpcRequestContext, type RpcResponse, type RpcResult } from "./contracts.js";
-import { DriverError, mapSdkError, safeError, serviceResponse } from "./errors.js";
+import { assertRequestActive, DriverError, mapSdkError, safeError, serviceResponse } from "./errors.js";
 import { JsonLineWriter, LineFramer, MAX_FRAME_BYTES } from "./framing.js";
 import { MetricsAccumulator, withRequestMetrics } from "./metrics.js";
 import { jsonObject, onlyKeys } from "./validation.js";
@@ -14,13 +14,20 @@ export interface RuntimeOptions {
   handlers?: Partial<Record<(typeof rpcMethods)[number], RpcHandler>>;
   resolveContext?: (request: RpcRequest) => ResolvedContext;
   onShutdown?: () => Promise<void>;
+  onInvalidate?: (connection_id: string) => Promise<void>;
   now?: () => number;
   globalConcurrency?: number;
   connectionConcurrency?: number;
   queueLimit?: number;
 }
 export interface RpcRuntime { dispatch(request: RpcRequest): Promise<RpcResponse | undefined>; idle(): Promise<void>; close(): Promise<void> }
-interface Pending { request: RpcRequest; context: RpcRequestContext; controller: AbortController; resolve: (response: RpcResponse | undefined) => void; timer: NodeJS.Timeout; started: boolean; key: string; bytes: number }
+interface ConnectionEpoch { generation: number; last_used: number; pending: number }
+type InvalidationResult = { ok: true } | { ok: false; error: unknown };
+interface Invalidation { promise: Promise<void>; waiters: Set<(result: InvalidationResult) => void> }
+interface Pending { request: RpcRequest; context: RpcRequestContext; controller: AbortController; resolve: (response: RpcResponse | undefined) => void; timer: NodeJS.Timeout; started: boolean; key: string; bytes: number; epoch?: ConnectionEpoch }
+export const MAX_NATIVE_CONNECTIONS = 4096;
+export const NATIVE_CONNECTION_RETENTION_MS = 20 * 60_000;
+export const MAX_INVALIDATION_CONTROLS = 8;
 const writes = new Set(["create_document", "replace_document", "delete_document"]);
 function knownMethod(value: string): boolean { return (rpcMethods as readonly string[]).includes(value); }
 function rpcError(request: RpcRequest, error: DriverError, code = -32000): RpcFailure {
@@ -42,12 +49,31 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
   const registry = new Map<string, Pending>();
   const queue: Pending[] = [];
   const perConnection = new Map<string, number>();
+  const epochs = new Map<string, ConnectionEpoch>();
+  const invalidations = new Map<string, Invalidation>();
   const idleWaiters: (() => void)[] = [];
   let active = 0;
+  let activeControls = 0;
   let pendingBytes = 0;
   let closing = false;
   let shutdown: Promise<void> | undefined;
   const contextResolver = options.resolveContext ?? resolveWireContext;
+  function notifyIdle(): void {
+    if (!registry.size && !invalidations.size) for (const resolve of idleWaiters.splice(0)) resolve();
+  }
+  function prepareEpoch(context: RpcRequestContext): ConnectionEpoch | undefined {
+    if (!context.connection) return undefined;
+    let epoch = epochs.get(context.connection_id);
+    if (!epoch) {
+      for (const [connection_id, candidate] of epochs) if (!candidate.pending && !invalidations.has(connection_id) && now() - candidate.last_used >= NATIVE_CONNECTION_RETENTION_MS) epochs.delete(connection_id);
+      if (epochs.size >= MAX_NATIVE_CONNECTIONS) throw new DriverError("RESOURCE_LIMIT", "The driver connection generation registry is full.");
+      epoch = { generation: 0, last_used: now(), pending: 0 };
+      epochs.set(context.connection_id, epoch);
+    }
+    epoch.last_used = now();
+    if (context.native_v1) context.native_generation = epoch.generation;
+    return epoch;
+  }
   function response(request: RpcRequest, context: RpcRequestContext, result: RpcResult): RpcResponse | undefined {
     if (!Object.hasOwn(request, "id")) return undefined;
     return { jsonrpc: "2.0", id: request.id ?? null, result: isV1Request(request) && !isServiceResponse(result) ? serviceResponse(context, result as JsonValue) : result };
@@ -61,8 +87,9 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
     clearTimeout(pending.timer);
     registry.delete(pending.key);
     pendingBytes -= pending.bytes;
+    if (pending.epoch) { pending.epoch.pending--; pending.epoch.last_used = now(); }
     pending.resolve(result);
-    if (!registry.size) for (const resolve of idleWaiters.splice(0)) resolve();
+    notifyIdle();
   }
   function abort(pending: Pending, reason: DriverError): void {
     pending.controller.abort(reason);
@@ -90,9 +117,10 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
   }
   function pump(): void {
     while (active < globalLimit) {
-      const index = queue.findIndex((pending) => (perConnection.get(pending.context.connection_id) ?? 0) < connectionLimit);
+      const index = queue.findIndex((pending) => !invalidations.has(pending.context.connection_id) && (perConnection.get(pending.context.connection_id) ?? 0) < connectionLimit);
       if (index < 0) break;
       const pending = queue.splice(index, 1)[0]!;
+      if (pending.context.native_v1 && pending.epoch) pending.context.native_generation = pending.epoch.generation;
       pending.started = true;
       active++;
       perConnection.set(pending.context.connection_id, (perConnection.get(pending.context.connection_id) ?? 0) + 1);
@@ -100,7 +128,7 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
     }
   }
   const runtime: RpcRuntime = {
-    async idle() { if (registry.size) await new Promise<void>((resolve) => idleWaiters.push(resolve)); },
+    async idle() { if (registry.size || invalidations.size) await new Promise<void>((resolve) => idleWaiters.push(resolve)); },
     async close() {
       if (!shutdown) {
         closing = true;
@@ -111,7 +139,8 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
     },
     async dispatch(request) {
       if (!knownMethod(request.method)) return Object.hasOwn(request, "id") ? dispatchRpc(request) : undefined;
-      if (!handlers[request.method as keyof typeof handlers] && request.method !== "cancel_request") return Object.hasOwn(request, "id") ? dispatchRpc(request) : undefined;
+      if (request.method === "service_invalidate_auth" && !options.onInvalidate) return Object.hasOwn(request, "id") ? dispatchRpc(request) : undefined;
+      if (!handlers[request.method as keyof typeof handlers] && request.method !== "cancel_request" && !(request.method === "service_invalidate_auth" && options.onInvalidate)) return Object.hasOwn(request, "id") ? dispatchRpc(request) : undefined;
       try {
         if (request.method === "cancel_request") {
           const value = request.params ?? {};
@@ -121,11 +150,12 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
           if (pending) abort(pending, new DriverError("CANCELLED", "The request was cancelled.", "not_applied"));
           return Object.hasOwn(request, "id") ? { jsonrpc: "2.0", id: request.id ?? null, result: { cancellation_requested: pending !== undefined } } : undefined;
         }
-        const resolved = contextResolver(request);
+        const resolved = request.method === "service_invalidate_auth" ? resolveWireContext(request) : contextResolver(request);
         const controller = new AbortController();
         const startedAt = now();
         let writeDispatched = false;
-        const context: RpcRequestContext = { ...resolved, signal: controller.signal, now, deadline_at_ms: startedAt + resolved.deadline_ms, metrics: new MetricsAccumulator(startedAt, now), markWriteDispatched: () => { writeDispatched = true; }, write_dispatched: () => writeDispatched };
+        const context: RpcRequestContext = { ...resolved, native_v1: isV1Request(request), signal: controller.signal, now, deadline_at_ms: startedAt + resolved.deadline_ms, metrics: new MetricsAccumulator(startedAt, now), markWriteDispatched: () => { writeDispatched = true; }, write_dispatched: () => writeDispatched };
+        delete context.native_generation;
         if (request.method === "shutdown") {
           const result = await handlers.shutdown!(handlerInput(request), context);
           await runtime.close();
@@ -136,14 +166,52 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
           try { return response(request, context, await handlers.initialize!(handlerInput(request), context)); }
           catch (error) { return failure(request, context, error); }
         }
+        if (request.method === "service_invalidate_auth") {
+          if (activeControls >= MAX_INVALIDATION_CONTROLS) return failure(request, context, new DriverError("RESOURCE_LIMIT", "The driver invalidation control limit was exceeded."));
+          let invalidation = invalidations.get(context.connection_id);
+          if (!invalidation) {
+            if (invalidations.size >= MAX_INVALIDATION_CONTROLS) return failure(request, context, new DriverError("RESOURCE_LIMIT", "The driver invalidation control limit was exceeded."));
+            const epoch = epochs.get(context.connection_id);
+            if (epoch && !Number.isSafeInteger(epoch.generation + 1)) return failure(request, context, new DriverError("RESOURCE_LIMIT", "The connection generation limit was exceeded."));
+            if (epoch) { epoch.generation++; epoch.last_used = now(); }
+            for (const pending of [...registry.values()]) if (pending.context.connection_id === context.connection_id) abort(pending, new DriverError("CANCELLED", "The connection authentication was invalidated.", "not_applied"));
+            invalidation = { promise: Promise.resolve().then(() => options.onInvalidate!(context.connection_id)), waiters: new Set() };
+            invalidations.set(context.connection_id, invalidation);
+            const current = invalidation;
+            const finished = (result: InvalidationResult): void => {
+              invalidations.delete(context.connection_id);
+              if (epoch) epoch.last_used = now();
+              for (const complete of current.waiters) complete(result);
+              current.waiters.clear();
+              pump(); notifyIdle();
+            };
+            void current.promise.then(() => finished({ ok: true }), (error: unknown) => finished({ ok: false, error }));
+          }
+          activeControls++;
+          let timer: NodeJS.Timeout | undefined;
+          try {
+            const current = invalidation;
+            await new Promise<void>((resolve, reject) => {
+              const complete = (result: InvalidationResult): void => { current.waiters.delete(complete); if (result.ok) resolve(); else reject(result.error); };
+              current.waiters.add(complete);
+              timer = setTimeout(() => complete({ ok: false, error: new DriverError("DEADLINE_EXCEEDED", "The request deadline was exceeded.", "not_applied") }), context.deadline_ms);
+            });
+            assertRequestActive(context);
+            return response(request, context, { invalidated: true });
+          } catch (error) { return failure(request, context, error); }
+          finally { activeControls--; if (timer) clearTimeout(timer); }
+        }
         const key = JSON.stringify([context.connection_id, context.request_id]);
         if (registry.has(key)) return failure(request, context, new DriverError("INVALID_ARGUMENT", "This connection and request identity is already in progress."));
         const bytes = Buffer.byteLength(JSON.stringify(request), "utf8");
         if (pendingBytes + bytes > 64 * 1024 * 1024) return failure(request, context, new DriverError("RESOURCE_LIMIT", "The driver pending request byte limit was exceeded."));
-        if ((active >= globalLimit || (perConnection.get(context.connection_id) ?? 0) >= connectionLimit) && queue.length >= queueLimit) return failure(request, context, new DriverError("RESOURCE_LIMIT", "The driver request queue is full."));
+        if ((invalidations.has(context.connection_id) || active >= globalLimit || (perConnection.get(context.connection_id) ?? 0) >= connectionLimit) && queue.length >= queueLimit) return failure(request, context, new DriverError("RESOURCE_LIMIT", "The driver request queue is full."));
+        let epoch: ConnectionEpoch | undefined;
+        try { epoch = prepareEpoch(context); } catch (error) { return failure(request, context, error); }
         return await new Promise<RpcResponse | undefined>((resolve) => {
           const timer = setTimeout(() => abort(pending, new DriverError("DEADLINE_EXCEEDED", "The request deadline was exceeded.", "not_applied")), context.deadline_ms);
-          const pending: Pending = { request, context, controller, resolve, timer, started: false, key, bytes };
+          const pending: Pending = { request, context, controller, resolve, timer, started: false, key, bytes, ...(epoch ? { epoch } : {}) };
+          if (epoch) epoch.pending++;
           pendingBytes += bytes; registry.set(key, pending); queue.push(pending); pump();
         });
       } catch (error) {
@@ -154,11 +222,11 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
   };
   return runtime;
 }
-export function createCosmosRuntime(options: Omit<RuntimeOptions, "handlers" | "onShutdown"> & { clients?: ClientProvider; handlers?: RuntimeOptions["handlers"] } = {}): RpcRuntime {
+export function createCosmosRuntime(options: Omit<RuntimeOptions, "handlers" | "onShutdown" | "onInvalidate"> & { clients?: ClientProvider; handlers?: RuntimeOptions["handlers"] } = {}): RpcRuntime {
   const clients = options.clients ?? createClientProvider();
   const queryReady = options.handlers?.query_page !== undefined && options.handlers.execute_query !== undefined;
   const handlers = { ...createConnectionHandlers(clients, { query_page_v1: queryReady }), ...createDocumentHandlers(clients), ...options.handlers };
-  return createRpcRuntime({ ...options, handlers, onShutdown: async () => { await clients.dispose?.(); } });
+  return createRpcRuntime({ ...options, handlers, onInvalidate: (connection_id) => clients.invalidate(connection_id), onShutdown: async () => { await clients.dispose?.(); } });
 }
 function parseRequest(value: unknown): RpcRequest | undefined {
   if (!jsonObject(value) || value.jsonrpc !== "2.0" || typeof value.method !== "string" || Object.keys(value).some((key) => !["jsonrpc", "id", "method", "params"].includes(key)) || (value.params !== undefined && !jsonObject(value.params))) return undefined;

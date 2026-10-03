@@ -26,7 +26,8 @@ export function normalizeQuery(value: QueryInput): NormalizedQuery {
 export function endpointIdentity(context: RpcRequestContext): string { return jsonHash(connectionContext(context).settings.endpoint); }
 export function authBinding(context: RpcRequestContext): string {
   const { auth } = connectionContext(context);
-  return jsonHash(auth.kind === "account_key" ? { kind: auth.kind, identity: auth.identity } : { kind: auth.kind, identity: auth.identity, tenant: auth.tenant_id, client: auth.client_id, principal: auth.principal_id, scope: auth.scope });
+  const identity = auth.kind === "account_key" ? { kind: auth.kind, identity: auth.identity } : { kind: auth.kind, identity: auth.identity, tenant: auth.tenant_id, client: auth.client_id, principal: auth.principal_id, scope: auth.scope };
+  return jsonHash(context.native_generation === undefined ? identity : { ...identity, native_generation: context.native_generation });
 }
 export function originalOptions(query: NormalizedQuery, metadata: ContainerMetadata): JsonObject {
   const key = query.partition_key;

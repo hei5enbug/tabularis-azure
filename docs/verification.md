@@ -38,7 +38,6 @@ Cosmos 설치 뒤 선언된 CSS asset도 host asset reader로 확인했습니다
 
 | 항목 | 현재 상태 |
 | --- | --- |
-| Windows GitHub native CI 최종 실행 | 런처·core는 통과, Windows ESM preload 경로 수정 뒤 전체 job 확인 중 |
 | Linux arm64 native runtime | 실행하지 않음 |
 | 실제 Azure account key·Entra 권한과 TLS | 사용자 지시에 따라 실행 보류 |
 | 실제 Entra interactive·refresh | 미관찰 |
@@ -69,12 +68,17 @@ bootstrap·CI 전용 검사 25개는 source SHA·lock·no-overwrite·pin·cache 
 
 | 환경 | 관찰 결과 | GitHub Actions 실행 |
 |---|---|---|
-| Ubuntu 24.04 x64 | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37192427616](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37192427616) |
-| macOS Intel | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37191589019](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37191589019) |
-| Windows 2022 x64 | Rust 런처·core 통과. protocol 검사에서 preload 경로 문제를 확인해 수정 | [실행 37192885995](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37192885995) |
+| Ubuntu 24.04 x64 | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37194631990) |
+| macOS Intel | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37194631990) |
+| Windows 2022 x64 | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37194631990) |
+
+위 세 job은 코드 commit `48308ecbda57fa5391db0e3c48f8f270d6f86aee`에서 모두 통과했다.
 
 Linux ZIP 해제는 GNU tar 대신 `bsdtar`를 사용하도록 수정했다.
 Windows에서는 native 경로의 표현 차이를 canonical path로 비교하고 ESM preload에 file URL을 전달한다.
+runtime archive는 열린 파일로 tar의 표준 입력에 전달해 한글 경로를 보존하고, 목록의 CRLF도 처리한다.
+보관 라이선스 원문은 `.gitattributes`로 줄바꿈 변환을 막아 고정 SHA를 유지한다.
+UI metadata 검사는 필드가 실제로 표시될 때까지 기다린다.
 후속 Intel 실행 `37192885995`에서는 큰 JSON의 내용 검사가 fixture의 1초 제한과 충돌했다.
 해당 파일은 고정된 가상 시계를 사용하도록 바꿨으며 기존 38개 검사가 통과했다.
 제품의 시간 제한과 별도 deadline 검사는 변경하지 않았다.
@@ -85,7 +89,7 @@ Windows에서는 native 경로의 표현 차이를 canonical path로 비교하�
 
 | 계획 요구 사항 | 구현·검증 상태 |
 |---|---|
-| C-R01 | 5개 대상의 패키징·bundled Node 구현 완료. ARM/Rosetta/Intel macOS와 Linux x64 실행 확인, Windows 최종 CI 확인 중 |
+| C-R01 | 5개 대상의 패키징·bundled Node 구현 완료. ARM/Rosetta/Intel macOS·Linux x64·Windows x64 실행 확인. Linux arm64 native 실행은 미관찰 |
 | C-R02–C-R05 | 탐색·원본 JSON·문서 CRUD·페이지 코드와 unit/protocol/UI 검사 완료. 실제 Azure 권한 검증은 보류 |
 | C-R06 | 교차 파티션 정렬·집계 구현과 synthetic 검사 완료. 실제 Azure 수용 검사는 보류 |
 | C-R07–C-R09 | RU·429·ETag·취소·인증 경계 구현과 synthetic 검사 완료. 실제 Azure 인증 검증은 보류 |

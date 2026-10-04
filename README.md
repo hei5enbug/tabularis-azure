@@ -28,7 +28,7 @@ bootstrap은 고정된 host 빌드 입력을 sibling `tabularis-host`에 준비�
 | macOS x64 | 실제 Rosetta 실행과 Intel native CI의 ZIP/runtime 실행 확인 |
 | Linux arm64 | archive 검증만 확인, native 실행 미확인 |
 | Linux x64 | Ubuntu native CI의 ZIP/runtime 실행 확인 |
-| Windows x64 | native 런처·core 검사 통과, protocol fixture 수정 후 CI 확인 중 |
+| Windows x64 | Windows 2022 native CI의 ZIP/runtime 실행 확인 |
 
 ## 연결과 작업 공간
 

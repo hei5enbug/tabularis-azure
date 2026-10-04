@@ -17,7 +17,9 @@
     "build:ui": "corepack pnpm --dir ui build",
     "test:live": "node scripts/live/cli.mjs",
     "package:plugin": "node scripts/package/cli.mjs",
-    "test:install": "node --test tests/install/*.test.mjs"
+    "test:install": "node --test tests/install/*.test.mjs",
+    "bootstrap": "node scripts/bootstrap/cli.mjs",
+    "test:bootstrap": "node --test tests/bootstrap/*.test.mjs tests/ci/*.test.mjs"
   },
   "dependencies": {
     "@azure/cosmos": "4.10.1",

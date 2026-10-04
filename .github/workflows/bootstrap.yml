@@ -1,55 +1,85 @@
-name: Bootstrap checks
+name: Native build and package checks
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
-    inputs:
-      host_repository:
-        description: Repository containing the matching host service contracts
-        required: true
-        type: string
-      host_ref:
-        description: Host revision containing the matching service contracts
-        required: true
-        type: string
 
 permissions:
   contents: read
 
 jobs:
-  bootstrap:
-    runs-on: ubuntu-24.04
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-15-intel]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: tabularis-cosmos
+        shell: pwsh
     env:
-      CARGO_TARGET_DIR: /tmp/tabularis-x0-target/cosmos
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TARGET_DIR: ${{ runner.temp }}/cosmos-launcher-target
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: tabularis-cosmos
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          repository: ${{ inputs.host_repository }}
-          ref: ${{ inputs.host_ref }}
-          path: tabularis-host
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 24.21.0
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
         with:
           version: 10.30.3
-      - name: Prepare host contract package
-        working-directory: tabularis-host
+          package_json_file: tabularis-cosmos/package.json
+          run_install: false
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4
+        with:
+          toolchain: 1.96.0
+          components: clippy
+      - name: Build from the canonical snapshot
         run: |
-          pnpm --filter @tabularis/service-contracts install --frozen-lockfile --ignore-scripts
-          pnpm --filter @tabularis/service-contracts build
-      - name: Install bootstrap dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Check the driver bootstrap
+          node scripts/bootstrap/cli.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check the launcher
+        run: |
+          cargo build --locked --release --manifest-path launcher/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --manifest-path launcher/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo clippy --locked --all-targets --manifest-path launcher/Cargo.toml -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify official runtimes and configure install fixtures
+        run: |
+          $suffix = if ($IsWindows) { '.exe' } else { '' }
+          $launcher = Join-Path $env:CARGO_TARGET_DIR "release/tabularis-cosmos-launcher$suffix"
+          $python = if ($IsWindows) { (Get-Command python.exe -ErrorAction Stop).Source } else { '/usr/bin/python3' }
+          $cache = Join-Path '${{ runner.temp }}' 'tabularis-runtime-cache/node-v24.21.0'
+          node scripts/ci/prepare.mjs --launcher $launcher --python $python --cache $cache --env-file $env:GITHUB_ENV
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check driver and UI boundaries
         run: |
           pnpm typecheck
-          pnpm build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm test:bootstrap
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm test:unit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm test:protocol
-      - name: Build the document UI bootstrap
-        run: pnpm build:ui
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --dir ui typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm test:ui
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check install fixtures and native production ZIP
+        run: |
+          pnpm test:install 2>&1 | Tee-Object -FilePath '${{ runner.temp }}/cosmos-install.log'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/ci/collect.mjs '${{ runner.temp }}/cosmos-install.log' '${{ runner.temp }}/cosmos-artifacts'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: cosmos-native-${{ matrix.os }}
+          path: ${{ runner.temp }}/cosmos-artifacts/
+          if-no-files-found: error

@@ -605,3 +605,16 @@ describe('문서 원본과 ETag 편집', () => {
     expect(service.call).not.toHaveBeenCalled();
   });
 });
+
+
+it("Azure CLI를 선택하면 공식 클라이언트를 지정하고 직접 변경을 막는다", () => {
+  // given
+  const setExtraField = vi.fn();
+  render(<ConnectionExtraFields extra={{ auth_mode: 'entra_user', tenant_id: 'synthetic', client_id: 'synthetic' }} setExtraField={setExtraField} setCredentialFieldsHidden={vi.fn()} />);
+  // when
+  fireEvent.change(screen.getByLabelText('로그인 소스'), { target: { value: 'azure_cli' } });
+  // then
+  expect(setExtraField).toHaveBeenCalledWith('auth_source', 'azure_cli');
+  expect(setExtraField).toHaveBeenCalledWith('client_id', '04b07795-8ddb-461a-bbee-02f9e1bf7b46');
+  expect(screen.getByLabelText('클라이언트 ID')).toHaveAttribute('readonly');
+});

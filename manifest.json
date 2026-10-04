@@ -51,6 +51,15 @@
       ]
     },
     {
+      "key": "auth_source",
+      "label": "Entra credential source",
+      "type": "select",
+      "options": [
+        "oauth",
+        "azure_cli"
+      ]
+    },
+    {
       "key": "tenant_id",
       "label": "Tenant ID",
       "type": "string"

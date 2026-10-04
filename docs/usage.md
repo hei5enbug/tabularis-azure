@@ -22,7 +22,19 @@ DB scope는 host가 `https://cosmos.azure.com/.default`로 고정합니다.
 
 무인 호출의 보호된 credential 채널에는 host가 관리하는 credential 등록 경로를 사용합니다.
 MCP JSON에 비밀을 넣어 `credential.import`를 호출하는 방식은 허용하지 않습니다.
-실제 Entra 로그인·refresh와 host 전체 결선은 아직 Azure에서 검증하지 않았습니다.
+Azure CLI의 실제 토큰 획득은 확인했습니다. 실제 데이터 작업과 전체 갱신 검증은 완료하지 않았습니다.
+
+## Azure CLI 로그인 사용하기
+
+Microsoft Entra 사용자 인증에서 로그인 소스를 `Azure CLI (az login)`로 선택하세요.
+개발 컴퓨터에서 먼저 `az login --tenant TENANT_ID`를 실행합니다.
+연결 설정에는 `auth_mode: "entra_user"`, `auth_source: "azure_cli"`와 테넌트 ID가 들어갑니다.
+클라이언트 ID는 공개 Azure CLI ID `04b07795-8ddb-461a-bbee-02f9e1bf7b46`로 고정됩니다.
+드라이버는 호스트가 전달한 토큰을 공식 Cosmos SDK에 전달하며 CLI를 직접 실행하지 않습니다.
+
+Cosmos 데이터 접근 역할이 있어야 문서를 조회할 수 있습니다.
+리소스 관리 권한과 데이터 접근 권한은 별개입니다. 앱 로그아웃은 CLI 세션을 종료하지 않습니다.
+전체 동작과 보안 경계는 [공통 인증 안내](https://github.com/hei5enbug/tabularis-spatial/blob/main/docs/usage.md#azure-cli-로그인-사용하기)를 참고하세요.
 
 ## 작업 공간 열기
 

@@ -168,3 +168,30 @@ test("initialize의 잘못된 endpoint는 연결 기본값으로 승인하지 �
   assert.equal(actual.error.data.code, "INVALID_ARGUMENT");
   assert.equal(f.sdk.calls.length, 0);
 });
+
+
+test("Azure CLI 소스는 공식 사용자 토큰을 기존 Cosmos SDK에 전달한다", async (t) => {
+  // given
+  const cli = "04b07795-8ddb-461a-bbee-02f9e1bf7b46";
+  const settings = normalizeConnectionSettings({ ...entraSettings, client_id: cli, auth_source: "azure_cli" });
+  const f = providerFixture(t);
+  const context = { connection_id: "cli", settings, auth: { ...entra, client_id: cli } };
+  // when
+  await f.clients.get(context);
+  const token = await f.options[0].aadCredentials.getToken(COSMOS_SCOPE);
+  // then
+  assert.equal(settings.auth_source, "azure_cli");
+  assert.equal(token.token, "synthetic-token-a");
+  assert.equal(Object.hasOwn(f.options[0], "key"), false);
+});
+
+for (const [name, settings] of [["다른 클라이언트", { ...entraSettings, auth_source: "azure_cli" }], ["계정 키", { ...fixtureSettings, auth_source: "azure_cli" }], ["알 수 없는 소스", { ...entraSettings, auth_source: "unknown" }]]) {
+  test(`${name} 설정으로 Azure CLI 인증을 선택할 수 없다`, () => {
+    // given
+    const input = settings;
+    // when
+    const error = (() => { try { normalizeConnectionSettings(input); } catch (error) { return error; } })();
+    // then
+    assert.equal(error.code, "INVALID_ARGUMENT");
+  });
+}

@@ -69,9 +69,10 @@ export function createConnectionHandlers(clients: ClientProvider, options: { que
       if (Object.hasOwn(value, "service_protocol") && value.service_protocol !== 1) throw new DriverError("PROTOCOL_MISMATCH", "The requested service protocol is unsupported.");
       if (value.settings !== undefined && !jsonObject(value.settings)) throw new DriverError("INVALID_ARGUMENT", "Plugin settings must be an object.");
       if (jsonObject(value.settings)) {
-        onlyKeys(value.settings, ["endpoint", "database", "auth_mode", "tenant_id", "client_id", "credential_ref"]);
+        onlyKeys(value.settings, ["endpoint", "database", "auth_mode", "auth_source", "tenant_id", "client_id", "credential_ref"]);
         for (const [key, field] of Object.entries(value.settings)) {
           if (typeof field !== "string" || !field) throw new DriverError("INVALID_ARGUMENT", "Plugin connection defaults must be nonempty strings.");
+          if (key === "auth_source" && !["oauth", "azure_cli"].includes(field)) throw new DriverError("INVALID_ARGUMENT", "The authentication source is unsupported.");
           if (key === "endpoint") validateEndpoint(field);
           if (key === "auth_mode" && !["account_key", "entra_user", "entra_service_principal"].includes(field)) throw new DriverError("INVALID_ARGUMENT", "The authentication mode is unsupported.");
         }

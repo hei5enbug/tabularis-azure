@@ -1,8 +1,8 @@
 import type { AuthMode, JsonObject } from "@tabularis/service-contracts/types";
 import { DriverError } from "../runtime/errors.js";
 
-export interface ConnectionSettings { endpoint: string; database?: string; auth_mode: AuthMode; tenant_id?: string; client_id?: string; credential_ref?: string }
-const keys = new Set(["endpoint", "database", "auth_mode", "tenant_id", "client_id", "credential_ref"]);
+export interface ConnectionSettings { endpoint: string; database?: string; auth_mode: AuthMode; auth_source?: "oauth" | "azure_cli"; tenant_id?: string; client_id?: string; credential_ref?: string }
+const keys = new Set(["endpoint", "database", "auth_mode", "auth_source", "tenant_id", "client_id", "credential_ref"]);
 function record(value: unknown): Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function text(value: unknown): string | undefined { return typeof value === "string" && value.length > 0 ? value : undefined; }
 export function validateEndpoint(value: string): string {
@@ -26,6 +26,11 @@ export function normalizeConnectionSettings(value: JsonObject): ConnectionSettin
   const mode = extra.auth_mode ?? value.auth_mode;
   if (!endpoint || (mode !== "account_key" && mode !== "entra_user" && mode !== "entra_service_principal")) throw new DriverError("INVALID_ARGUMENT", "Endpoint and supported auth_mode are required.");
   const settings: ConnectionSettings = { endpoint: validateEndpoint(endpoint), auth_mode: mode };
+  const source = extra.auth_source ?? value.auth_source;
+  if (source !== undefined) {
+    if ((source !== "oauth" && source !== "azure_cli") || (source === "azure_cli" && (mode !== "entra_user" || (extra.client_id ?? value.client_id) !== "04b07795-8ddb-461a-bbee-02f9e1bf7b46"))) throw new DriverError("INVALID_ARGUMENT", "The authentication source is unsupported.");
+    settings.auth_source = source;
+  }
   const selected = extra.database ?? value.database;
   const database = text(Array.isArray(selected) ? selected[0] : selected);
   if (database) settings.database = database;

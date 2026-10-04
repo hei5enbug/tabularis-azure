@@ -3,7 +3,7 @@ import type { AuthMode, DocumentIdentity, JsonObject, JsonValue, PartitionKeyCom
 export interface SavedConnection {
   connection_id: string; name: string; driver: string; settings: JsonObject; version: number; allow_writes: boolean;
 }
-export interface ConnectionFields { endpoint: string; auth_mode: AuthMode; tenant_id: string; client_id: string; database: string }
+export interface ConnectionFields { endpoint: string; auth_mode: AuthMode; auth_source?: "oauth" | "azure_cli"; tenant_id: string; client_id: string; database: string }
 export interface ContainerMetadata {
   columns: JsonValue[]; partition_key_paths: string[]; partition_key_kind: string; partition_key_version: number; system_key: boolean;
 }
@@ -28,7 +28,7 @@ export function connectionFields(settings: JsonObject): ConnectionFields {
   const extra = object(settings.extra) ? settings.extra : {};
   const field = (name: string) => typeof extra[name] === 'string' ? extra[name] as string : typeof settings[name] === 'string' ? settings[name] as string : '';
   const mode = field('auth_mode');
-  return { endpoint: field('endpoint') || field('host'), auth_mode: mode === 'entra_user' || mode === 'entra_service_principal' ? mode : 'account_key', tenant_id: field('tenant_id'), client_id: field('client_id'), database: field('database') };
+  return { endpoint: field('endpoint') || field('host'), auth_mode: mode === 'entra_user' || mode === 'entra_service_principal' ? mode : 'account_key', ...(field('auth_source') ? { auth_source: field('auth_source') as 'oauth' | 'azure_cli' } : {}), tenant_id: field('tenant_id'), client_id: field('client_id'), database: field('database') };
 }
 export function publicEndpoint(endpoint: string): string {
   let url: URL;

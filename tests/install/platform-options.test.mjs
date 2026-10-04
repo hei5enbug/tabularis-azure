@@ -75,7 +75,7 @@ for (const [platform, arch, env] of [['linux', 'arm64', linux], ['linux', 'x64',
     assert.equal(actual.launcher, env.TABULARIS_C3B_TEST_LAUNCHER);
     assert.equal(actual.runtimeArchive, env.TABULARIS_C3B_TEST_NODE_ARCHIVE);
     assert.equal(actual.python, platform === 'win32' ? 'C:\\fixture\\python.exe' : '/usr/bin/python3');
-    assert.equal(actual.tar, platform === 'win32' ? 'C:\\Windows\\System32\\tar.exe' : '/bin/tar');
+    assert.equal(actual.tar, platform === 'win32' ? 'C:\\Windows\\System32\\tar.exe' : '/usr/bin/bsdtar');
   });
 }
 

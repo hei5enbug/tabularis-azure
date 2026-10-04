@@ -7,7 +7,7 @@ import { NODE_PINS, NODE_VERSION } from './pins.mjs';
 
 export function defaultTar() {
   if (process.platform === 'darwin') return '/usr/bin/tar';
-  if (process.platform === 'linux') return '/bin/tar';
+  if (process.platform === 'linux') return '/usr/bin/bsdtar';
   if (process.platform === 'win32') {
     const root = process.env.SystemRoot;
     if (!root || !path.isAbsolute(root)) fail('UNSUPPORTED_ARCHIVE_PARSER');

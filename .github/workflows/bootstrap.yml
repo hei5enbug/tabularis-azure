@@ -38,6 +38,12 @@ jobs:
         with:
           toolchain: 1.96.0
           components: clippy
+      - name: Install the Linux archive parser
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libarchive-tools
       - name: Build from the canonical snapshot
         run: |
           node scripts/bootstrap/cli.mjs

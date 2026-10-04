@@ -110,11 +110,12 @@ fn 번들_노드만_실행하고_고정_인자와_환경_제거_및_작업_폴�
     // given
     let fixture = Fixture::new(r#"
 import { dirname } from 'node:path';
+import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const entry = fileURLToPath(import.meta.url);
 const names = ['NODE_OPTIONS','NODE_PATH','NODE_TLS_REJECT_UNAUTHORIZED','NODE_EXTRA_CA_CERTS','NODE_USE_SYSTEM_CA','SSL_CERT_FILE','SSL_CERT_DIR','OPENSSL_CONF'];
-const fixed = process.execArgv.length === 1 && process.execArgv[0] === '--max-old-space-size=512' && process.argv.length === 2 && process.argv[1] === entry;
-console.log([process.version, fixed, names.every(name => !Object.hasOwn(process.env, name)), process.cwd() === dirname(dirname(entry))].join('\n'));
+const fixed = process.execArgv.length === 1 && process.execArgv[0] === '--max-old-space-size=512' && process.argv.length === 2 && realpathSync.native(process.argv[1]) === realpathSync.native(entry);
+console.log([process.version, fixed, names.every(name => !Object.hasOwn(process.env, name)), realpathSync.native(process.cwd()) === realpathSync.native(dirname(dirname(entry)))].join('\n'));
 "#);
     // when
     let output = fixture.run(Vec::new());

@@ -57,7 +57,7 @@ for (const [name, version] of packages) {
     assert.equal(actual.notices[0].template_source, 'https://raw.githubusercontent.com/spdx/license-list-data/main/text/MIT.txt');
     assert.ok(actual.files.every(([relative]) => relative.startsWith(`licenses/packages/${name}/${version}/${actual.notices[0].sha256}/`)));
     assert.ok(actual.files.every(([relative, file]) => fs.readFileSync(file.path).equals(fs.readFileSync(path.join(value.vendor, path.basename(relative))))));
-    assert.ok(actual.files.every(([, file]) => (fs.statSync(file.path).mode & 0o777) === 0o600));
+    assert.ok(actual.files.every(([, file]) => process.platform === 'win32' ? fs.lstatSync(file.path).isFile() : (fs.statSync(file.path).mode & 0o777) === 0o600));
     assert.ok(actual.files.every(([, file]) => !fs.lstatSync(file.path).isSymbolicLink()));
     assert.match(fs.readFileSync(actual.files.find(([relative]) => relative.endsWith('/MIT-TEMPLATE.txt'))[1].path, 'utf8'), /Copyright \(c\) <year> <copyright holders>/);
   });
@@ -81,9 +81,9 @@ for (const [title, mutate] of [
   ['상한을 넘는 보관 README', value => fs.truncateSync(path.join(value.vendor, 'UPSTREAM-README.md'), 64 * 1024 * 1024)],
   ['설치 README 심볼릭 링크', value => { const file = path.join(value.installed, 'README.md'); fs.unlinkSync(file); fs.symlinkSync(path.join(value.vendor, 'UPSTREAM-README.md'), file); }],
   ['보관 템플릿 심볼릭 링크', value => { const file = path.join(value.vendor, 'MIT-TEMPLATE.txt'); fs.renameSync(file, `${file}.original`); fs.symlinkSync(`${file}.original`, file); }],
-  ['보관 디렉터리 심볼릭 링크', value => { fs.renameSync(value.vendor, `${value.vendor}.original`); fs.symlinkSync(`${value.vendor}.original`, value.vendor, 'dir'); }],
+  ['보관 디렉터리 심볼릭 링크', value => { fs.renameSync(value.vendor, `${value.vendor}.original`); fs.symlinkSync(`${value.vendor}.original`, value.vendor, process.platform === 'win32' ? 'junction' : 'dir'); }],
   ...(process.platform === 'win32' ? [] : [['공개 staging 디렉터리', value => fs.chmodSync(value.stage.root, 0o755)]]),
-  ['staging 디렉터리 심볼릭 링크', value => { const folder = value.stage.root; fs.renameSync(folder, `${folder}.original`); fs.symlinkSync(`${folder}.original`, folder, 'dir'); }],
+  ['staging 디렉터리 심볼릭 링크', value => { const folder = value.stage.root; fs.renameSync(folder, `${folder}.original`); fs.symlinkSync(`${folder}.original`, folder, process.platform === 'win32' ? 'junction' : 'dir'); }],
 ]) {
   test(`${title} 조건에서는 보관 라이선스를 허용하지 않는다`, async t => {
     // given

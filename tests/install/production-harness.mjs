@@ -1,32 +1,31 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { prepareInstallSmoke, runInstallSmoke } from './harness.mjs';
+import { POISONING_KEYS, prepareInstallSmoke, runInstallSmoke } from './harness.mjs';
 import { hashFile } from '../../scripts/package/files.mjs';
 import { NODE_PINS } from '../../scripts/package/pins.mjs';
+import { fixtureEnvironment, fixturePaths, selectTargets } from './platform-options.mjs';
 
 const source = fileURLToPath(new URL('../../', import.meta.url));
 const CANARY = 'production-protocol-secret-canary';
 const FRAME_LIMIT = 8 * 1024 * 1024;
-const LAUNCHER_TARGET = '/tmp/tabularis-c3b2b1-launcher-target';
-const NODE_CACHE = '/tmp/tabularis-runtime-cache/node-v24.21.0';
 
-export function productionOptions(arch) {
-  if (process.platform !== 'darwin' || !['arm64', 'x64'].includes(arch)) throw new Error('CAPABILITY_UNAVAILABLE: explicit macOS production fixture required');
-  const root = fs.mkdtempSync(`/tmp/tabularis-c3b2b1-production-${arch}-`);
+export function productionOptions(arch, { platform = process.platform, hostArch = process.arch, env } = {}) {
+  if (!selectTargets(platform, hostArch).some(target => target.arch === arch)) throw new Error('CAPABILITY_UNAVAILABLE');
+  const paths = fixturePaths({ platform, arch, env, production: true });
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `tabularis-c3b2c-production-${arch}-`));
   fs.chmodSync(root, 0o700);
   const profile = path.join(root, 'cli-profile');
   fs.mkdirSync(profile, { mode: 0o700 });
   return {
-    root, profile, platform: 'darwin', arch, source,
-    launcher: path.join(LAUNCHER_TARGET, arch === 'arm64' ? 'aarch64-apple-darwin' : 'x86_64-apple-darwin', 'release', 'tabularis-cosmos-launcher'),
-    runtimeArchive: path.join(NODE_CACHE, `node-v24.21.0-darwin-${arch}.tar.gz`),
-    output: path.join(root, `cosmos-nosql-0.1.0-darwin-${arch}.zip`), tar: '/usr/bin/tar',
+    root, profile, ...paths, source,
+    output: path.join(root, `cosmos-nosql-0.1.0-${platform}-${arch}.zip`),
   };
 }
 
-function environment(profile) { return { PATH: '', HOME: profile, USERPROFILE: profile }; }
+function environment(profile) { return fixtureEnvironment(profile); }
 
 function execute(executable, args, { cwd = source, env, timeout = 60_000 } = {}) {
   return spawnSync(executable, args, { cwd, env, shell: false, encoding: 'utf8', timeout, maxBuffer: FRAME_LIMIT });
@@ -41,8 +40,8 @@ function packageCLI(options) {
 function auditArchive(options) {
   const driverHash = hashFile(path.join(source, 'dist/index.js'));
   const licenseHash = hashFile(path.join(source, 'LICENSE'));
-  const result = execute('/usr/bin/python3', ['-c', AUDIT_ARCHIVE, options.output, options.arch,
-    NODE_PINS[`darwin-${options.arch}`], driverHash, licenseHash, fileURLToPath(new URL('../../../../', import.meta.url))], { env: environment(options.profile) });
+  const result = execute(options.python, ['-c', AUDIT_ARCHIVE, options.output, options.platform, options.arch,
+    NODE_PINS[`${options.platform}-${options.arch}`], driverHash, licenseHash, fileURLToPath(new URL('../../../../', import.meta.url))], { env: environment(options.profile) });
   if (result.status !== 0 || result.stderr) throw new Error('Production archive audit failed.');
   return JSON.parse(result.stdout);
 }
@@ -65,7 +64,7 @@ function responses(result) {
 }
 
 async function installedProduction(options) {
-  const prepared = prepareInstallSmoke({ bundle: options.output, platform: options.platform, arch: options.arch, python: '/usr/bin/python3' });
+  const prepared = prepareInstallSmoke({ bundle: options.output, platform: options.platform, arch: options.arch, python: options.python });
   let actual;
   try {
     const extracted = execute(prepared.extraction.executable, prepared.extraction.args, { env: environment(prepared.profile) });
@@ -78,7 +77,7 @@ async function installedProduction(options) {
     actual = {
       version, identity: { ...identity, data: identity.status === 0 ? JSON.parse(identity.stdout) : null }, eof, shutdown,
       path: config.env.PATH, isolatedProfile: config.env.HOME === prepared.profile && config.env.USERPROFILE === prepared.profile,
-      poisonCount: Object.keys(config.env).filter(key => !['PATH', 'HOME', 'USERPROFILE'].includes(key)).length,
+      poisonCount: POISONING_KEYS.filter(key => Object.hasOwn(config.env, key)).length,
       runtimeHash: hashFile(config.runtime), launcherHash: hashFile(config.executable), hostArch: process.arch,
     };
   } finally { prepared.dispose(); }
@@ -98,8 +97,10 @@ export async function productionSmoke(options) {
   const audit = auditArchive(options);
   const smoke = await installedProduction(options);
   const result = {
-    root: options.root, output: options.output, outputMode: fs.statSync(options.output).mode & 0o777,
-    rootMode: fs.statSync(options.root).mode & 0o777, checksum: fs.readFileSync(`${options.output}.sha256`, 'utf8').trim(),
+    root: options.root, output: options.output, outputMode: process.platform === 'win32' ? null : fs.statSync(options.output).mode & 0o777,
+    rootMode: process.platform === 'win32' ? null : fs.statSync(options.root).mode & 0o777,
+    outputRegular: fs.lstatSync(options.output).isFile() && !fs.lstatSync(options.output).isSymbolicLink(),
+    rootDirectory: fs.lstatSync(options.root).isDirectory() && !fs.lstatSync(options.root).isSymbolicLink(), checksum: fs.readFileSync(`${options.output}.sha256`, 'utf8').trim(),
     metadata, originalHash, duplicate: { status: duplicate.status, stdout: duplicate.stdout, stderr: duplicate.stderr },
     preservedHash, audit, smoke,
   };
@@ -110,7 +111,7 @@ export async function productionSmoke(options) {
 }
 
 const AUDIT_ARCHIVE = `import hashlib,json,pathlib,stat,sys,zipfile
-bundle,arch,pin,driver_hash,license_hash,workspace=sys.argv[1:]
+bundle,platform,arch,pin,driver_hash,license_hash,workspace=sys.argv[1:]
 with zipfile.ZipFile(bundle) as archive:
     entries=archive.infolist()
     names=[entry.filename for entry in entries]
@@ -121,7 +122,7 @@ with zipfile.ZipFile(bundle) as archive:
     assert len(ledger)==len(release['files']) and set(ledger)==set(names)-{'release.json'}
     assert release['node']=='24.21.0' and release['sdk']=='4.10.1'
     assert release['service_protocol']==1 and release['min_runtime_version']=='0.26.1-spatial.1'
-    assert release['platform']=='darwin' and release['arch']==arch and release['runtime_archive_sha256']==pin
+    assert release['platform']==platform and release['arch']==arch and release['runtime_archive_sha256']==pin
     total=0
     for entry in entries:
         name=entry.filename
@@ -135,7 +136,10 @@ with zipfile.ZipFile(bundle) as archive:
             assert ledger[name]['bytes']==len(data) and ledger[name]['sha256']==hashlib.sha256(data).hexdigest()
     manifest=json.loads(archive.read('.tabularium'))
     assert manifest['version']=='0.1.0' and manifest['min_runtime_version']=='0.26.1-spatial.1' and manifest['service_protocol']==1
-    assert manifest['executable']=='cosmos-nosql' and manifest['paradigms']==['document']
+    executable='cosmos-nosql.exe' if platform=='win32' else 'cosmos-nosql'
+    runtime='runtime/node.exe' if platform=='win32' else 'runtime/bin/node'
+    assert manifest['executable']==executable and manifest['paradigms']==['document']
+    assert executable in names and runtime in names
     assert len(manifest['ui_extensions'])==4 and all(item['driver']=='cosmos-nosql' and item['module']=='ui/dist/index.js' for item in manifest['ui_extensions'])
     assert {item['slot'] for item in manifest['ui_extensions']}=={'connection-modal.extra_fields','data-grid.toolbar.actions','row-edit-modal.footer.before','row-editor-sidebar.header.actions'}
     assert all(manifest['capabilities'][key] is True for key in ('documents_v1','query_page_v1','cancel_v1','metadata_discovery'))

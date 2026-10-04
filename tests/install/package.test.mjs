@@ -44,7 +44,9 @@ test('패키지는 고정 레이아웃과 중첩 버전 및 원문 라이선스�
   assert.ok(archive.notices.some(item => item.name === 'shared' && item.version === '2.0.0'));
   assert.ok(!JSON.stringify(archive).includes(value.root));
   assert.equal(fs.readFileSync(`${value.options.output}.sha256`, 'utf8').trim(), result.sha256);
-  assert.equal(fs.statSync(value.options.output).mode & 0o777, 0o600);
+  assert.equal(fs.lstatSync(value.options.output).isFile(), true);
+  assert.equal(fs.lstatSync(value.options.output).isSymbolicLink(), false);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(value.options.output).mode & 0o777, 0o600);
 });
 
 function packageTwice(options) {

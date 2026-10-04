@@ -87,7 +87,7 @@ test('CSS 상위 디렉터리의 심볼릭 링크를 거부한다', t => {
   const dist = path.join(value.source, 'ui/dist');
   const moved = path.join(value.root, 'moved-dist');
   fs.renameSync(dist, moved);
-  fs.symlinkSync(moved, dist, 'dir');
+  fs.symlinkSync(moved, dist, process.platform === 'win32' ? 'junction' : 'dir');
   // when
   const result = capture(() => uiStyle(value.source));
   // then

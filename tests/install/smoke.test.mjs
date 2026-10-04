@@ -6,6 +6,7 @@ import { packageBundle } from '../../scripts/package/index.mjs';
 import { prepareInstallSmoke, runInstallSmoke } from './harness.mjs';
 import { actualOptions, fixture, python } from './fixtures.mjs';
 import { spawnSync } from 'node:child_process';
+import { selectTargets } from './platform-options.mjs';
 
 function runPackageCLI(options) {
   const args = ['scripts/package/cli.mjs', '--platform', options.platform, '--arch', options.arch, '--source', options.source, '--launcher', options.launcher, '--runtime-archive', options.runtimeArchive, '--output', options.output];
@@ -17,7 +18,7 @@ function runPackageCLI(options) {
 
 async function installedSmoke(options, input, arch) {
   const packaged = arch === 'arm64' ? runPackageCLI(options) : packageBundle(options);
-  const prepared = prepareInstallSmoke({ bundle: options.output, platform: options.platform, arch });
+  const prepared = prepareInstallSmoke({ bundle: options.output, platform: options.platform, arch, python: options.python });
   try {
     const extracted = python(prepared.extraction.args);
     if (extracted.status !== 0) return { extracted: extracted.status };
@@ -29,9 +30,7 @@ async function installedSmoke(options, input, arch) {
   } finally { prepared.dispose(); }
 }
 
-const architectures = process.platform === 'darwin' ? ['arm64', 'x64'] : process.platform === 'win32' ? ['x64'] : [];
-
-for (const arch of architectures) {
+for (const { arch } of selectTargets(process.platform, process.arch)) {
   test(`${arch} 번들 런처가 Node 없는 PATH와 새 프로필에서 합성 드라이버를 실행한다`, { timeout: 120000 }, async t => {
     // given
     const value = fixture(t);
@@ -65,7 +64,9 @@ test('설치 harness는 호출자가 명시한 bundle과 정리 가능한 새 �
   assert.equal(prepared.extraction.args.at(-2), value.options.output);
   assert.equal(prepared.extraction.args.at(-1), prepared.installed);
   assert.ok(prepared.profile.startsWith(prepared.root));
-  assert.equal(fs.statSync(prepared.root).mode & 0o777, 0o700);
+  assert.equal(fs.lstatSync(prepared.root).isDirectory(), true);
+  assert.equal(fs.lstatSync(prepared.root).isSymbolicLink(), false);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(prepared.root).mode & 0o777, 0o700);
   assert.equal(typeof prepared.dispose, 'function');
 });
 

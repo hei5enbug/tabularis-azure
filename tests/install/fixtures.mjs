@@ -5,13 +5,9 @@ import { spawnSync } from 'node:child_process';
 import { sha256 } from '../../scripts/package/files.mjs';
 import { NODE_VERSION } from '../../scripts/package/pins.mjs';
 import { defaultTar } from '../../scripts/package/runtime.mjs';
+import { directoryLinkType, fixturePaths, pythonExecutable, runtimeCache } from './platform-options.mjs';
 
-export function pythonExecutable() {
-  if (process.platform !== 'win32') return '/usr/bin/python3';
-  const executable = process.env.TABULARIS_C3B_TEST_PYTHON;
-  if (!executable || !path.isAbsolute(executable)) throw new Error('explicit Python test fixture input required');
-  return executable;
-}
+export { pythonExecutable } from './platform-options.mjs';
 
 export const ACCEPTED_MANIFEST = {
   id: 'cosmos-nosql', name: 'cosmos-nosql', kind: 'driver', engine: 'cosmos-nosql', version: '0.1.0',
@@ -50,7 +46,7 @@ export function fixture(t) {
   write(path.join(contracts, 'dist', 'index.js'), `import fs from 'node:fs';export const schema=JSON.parse(fs.readFileSync(new URL('../schemas/fixture.json',import.meta.url),'utf8')).title;`);
   write(path.join(contracts, 'schemas', 'fixture.json'), { title: 'materialized contract' });
   fs.mkdirSync(path.join(source, 'node_modules', '@tabularis'), { recursive: true });
-  fs.symlinkSync(contracts, path.join(source, 'node_modules', '@tabularis', 'service-contracts'), 'dir');
+  fs.symlinkSync(contracts, path.join(source, 'node_modules', '@tabularis', 'service-contracts'), directoryLinkType());
   const first = pkg(path.join(source, 'node_modules', 'first'), 'first', '1.0.0', { dependencies: { shared: '1' }, peerDependencies: { peer: '1' } }, `import shared from 'shared';import peer from 'peer';export default shared+':'+peer;`);
   pkg(path.join(first, 'node_modules', 'shared'), 'shared', '1.0.0');
   pkg(path.join(first, 'node_modules', 'peer'), 'peer', '1.0.0');
@@ -59,7 +55,7 @@ export function fixture(t) {
   const cycle = pkg(path.join(source, 'node_modules', 'cycle'), 'cycle', '1.0.0', { dependencies: { leaf: '1' } }, `import { label } from 'leaf';export default label;`);
   const leaf = pkg(path.join(cycle, 'node_modules', 'leaf'), 'leaf', '1.0.0', { dependencies: { cycle: '1' } }, 'export const label = "bounded cycle";');
   fs.mkdirSync(path.join(leaf, 'node_modules'), { recursive: true });
-  fs.symlinkSync(cycle, path.join(leaf, 'node_modules', 'cycle'), 'dir');
+  fs.symlinkSync(cycle, path.join(leaf, 'node_modules', 'cycle'), directoryLinkType());
   pkg(path.join(source, 'node_modules', 'development'), 'development', '1.0.0');
   pkg(path.join(source, 'node_modules', 'installedOptional'), 'installedOptional', '1.0.0');
   write(path.join(first, '.env'), 'SYNTHETIC_SECRET_CANARY=hidden');
@@ -93,16 +89,8 @@ export function capture(action) {
   try { return { value: action(), error: null }; } catch (error) { return { value: null, error: error.code ?? error.message }; }
 }
 
-export const NODE_CACHE = '/tmp/tabularis-runtime-cache/node-v24.21.0';
-export const LAUNCHER_TARGET = '/tmp/tabularis-c3b-launcher-target';
+export const NODE_CACHE = runtimeCache();
 
 export function actualOptions(value, arch) {
-  if (process.platform === 'darwin') return { ...value.options, arch, expectedRuntimePin: undefined, runtimeArchive: path.join(NODE_CACHE, `node-v24.21.0-darwin-${arch}.tar.gz`), launcher: path.join(LAUNCHER_TARGET, ...(arch === 'x64' ? ['x86_64-apple-darwin'] : []), 'debug', 'tabularis-cosmos-launcher') };
-  if (process.platform === 'win32') {
-    const launcher = process.env.TABULARIS_C3B_TEST_LAUNCHER;
-    const runtimeArchive = process.env.TABULARIS_C3B_TEST_NODE_ARCHIVE;
-    if (!launcher || !runtimeArchive) throw new Error('explicit verified Windows fixture inputs required');
-    return { ...value.options, platform: 'win32', arch: 'x64', expectedRuntimePin: undefined, launcher, runtimeArchive, tar: undefined };
-  }
-  throw new Error('explicit supported OS fixture inputs required');
+  return { ...value.options, ...fixturePaths({ arch }), expectedRuntimePin: undefined };
 }

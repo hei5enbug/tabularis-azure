@@ -4,10 +4,14 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { absolute, regularWithin } from '../../scripts/package/files.mjs';
 import { fail } from '../../scripts/package/errors.mjs';
+import { fixtureEnvironment, nativeNames, pythonExecutable } from './platform-options.mjs';
 
-export function prepareInstallSmoke({ bundle, platform = process.platform, arch = process.arch, python = process.platform === 'win32' ? process.env.TABULARIS_C3B_TEST_PYTHON : '/usr/bin/python3' }) {
+export const POISONING_KEYS = ['NODE_OPTIONS', 'NODE_PATH', 'NODE_TLS_REJECT_UNAUTHORIZED', 'NODE_EXTRA_CA_CERTS', 'NODE_USE_SYSTEM_CA', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'OPENSSL_CONF'];
+
+export function prepareInstallSmoke({ bundle, platform = process.platform, arch = process.arch, python = pythonExecutable() }) {
   absolute(bundle);
   absolute(python);
+  const names = nativeNames(platform, arch);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tabularis-install-한글 space-'));
   fs.chmodSync(root, 0o700);
   const installed = path.join(root, 'bundle');
@@ -20,9 +24,9 @@ export function prepareInstallSmoke({ bundle, platform = process.platform, arch 
     extraction: { executable: python, args: ['-c', PYTHON_EXTRACT, bundle, installed] },
     launch() {
       if (disposed) fail('INVALID_FIXTURE');
-      const runtime = regularWithin(installed, platform === 'win32' ? 'runtime/node.exe' : 'runtime/bin/node');
-      const executable = regularWithin(installed, platform === 'win32' ? 'cosmos-nosql.exe' : 'cosmos-nosql');
-      return { executable, runtime, args: [], cwd: installed, env: { PATH: '', HOME: profile, USERPROFILE: profile, NODE_OPTIONS: '--invalid-canary', NODE_PATH: 'secret-canary', NODE_TLS_REJECT_UNAUTHORIZED: '0', NODE_EXTRA_CA_CERTS: 'secret-canary', NODE_USE_SYSTEM_CA: '1', SSL_CERT_FILE: 'secret-canary', SSL_CERT_DIR: 'secret-canary', OPENSSL_CONF: 'secret-canary' } };
+      const runtime = regularWithin(installed, names.runtime);
+      const executable = regularWithin(installed, names.executable);
+      return { executable, runtime, args: [], cwd: installed, env: { ...fixtureEnvironment(profile), NODE_OPTIONS: '--invalid-canary', NODE_PATH: 'secret-canary', NODE_TLS_REJECT_UNAUTHORIZED: '0', NODE_EXTRA_CA_CERTS: 'secret-canary', NODE_USE_SYSTEM_CA: '1', SSL_CERT_FILE: 'secret-canary', SSL_CERT_DIR: 'secret-canary', OPENSSL_CONF: 'secret-canary' } };
     },
     dispose() {
       if (!disposed) fs.rmSync(root, { recursive: true, force: true });

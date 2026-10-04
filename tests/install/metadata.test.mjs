@@ -51,7 +51,7 @@ test('공개 연결 설정은 자격 증명 참조와 비밀 값을 입력받지
   assert.deepEqual(manifest.settings.find(setting => setting.key === 'auth_mode').options, ['account_key', 'entra_user', 'entra_service_principal']);
 });
 
-test('패키지 명령은 실제 CLI와 설치 테스트에 연결하고 live 검증은 보류한다', () => {
+test('패키지와 live 명령은 각각의 실제 CLI 진입점에 연결한다', () => {
   // given
   const relative = 'package.json';
   // when
@@ -62,7 +62,7 @@ test('패키지 명령은 실제 CLI와 설치 테스트에 연결하고 live �
   assert.equal(metadata.packageManager, 'pnpm@10.30.3');
   assert.equal(metadata.scripts['package:plugin'], 'node scripts/package/cli.mjs');
   assert.equal(metadata.scripts['test:install'], 'node --test tests/install/*.test.mjs');
-  assert.match(metadata.scripts['test:live'], /CAPABILITY_UNAVAILABLE: live harness is not connected/);
+  assert.equal(metadata.scripts['test:live'], 'node scripts/live/cli.mjs');
   assert.ok(fs.statSync(path.join(source, 'scripts/package/cli.mjs')).isFile());
 });
 

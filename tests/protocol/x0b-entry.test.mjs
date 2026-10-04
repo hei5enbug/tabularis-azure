@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 function runEntry(input) {
   return new Promise((resolve, reject) => {
     const driver = fileURLToPath(new URL("../../dist/index.js", import.meta.url));
-    const guard = fileURLToPath(new URL("../support/x0b-network-guard.mjs", import.meta.url));
+    const guard = new URL("../support/x0b-network-guard.mjs", import.meta.url).href;
     const child = spawn(process.execPath, ["--import", guard, driver], { stdio: ["pipe", "pipe", "pipe", "ipc"], env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, AZURE_LOG_LEVEL: "verbose" } });
     const messages = [];
     let stdout = "";

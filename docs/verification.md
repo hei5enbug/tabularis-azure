@@ -38,13 +38,13 @@ Cosmos 설치 뒤 선언된 CSS asset도 host asset reader로 확인했습니다
 
 | 항목 | 현재 상태 |
 | --- | --- |
-| Ubuntu·Windows·macOS Intel의 GitHub native CI | workflow 등록, 아직 실행하지 않음 |
+| Windows GitHub native CI 최종 실행 | 런처·core는 통과, Windows ESM preload 경로 수정 뒤 전체 job 확인 중 |
 | Linux arm64 native runtime | 실행하지 않음 |
 | 실제 Azure account key·Entra 권한과 TLS | 사용자 지시에 따라 실행 보류 |
 | 실제 Entra interactive·refresh | 미관찰 |
 | 실제 Azure index policy | 관리자가 준비해야 하며 harness metadata에서 확인하지 못함 |
 | 실제 Azure native cross-process continuation | 수동 harness 코드 준비, 실제 실행 보류 |
-| 실제 전체 GUI·CLI·MCP host parity | 별도 통합 검증 필요 |
+| Cosmos 실제 Azure를 포함한 GUI·CLI·MCP parity | 공통 어댑터는 실제 PostGIS로 확인, Cosmos의 실제 Azure 실행은 보류 |
 | Windows 수동 live harness owner ACL | 미구현으로 명시적 거부 |
 
 CI의 production smoke는 ZIP을 임시 fixture 경로에 extraction한 뒤 bundled launcher를 실행합니다.
@@ -64,3 +64,29 @@ bootstrap·CI 전용 검사 25개는 source SHA·lock·no-overwrite·pin·cache 
 실행 로그는 `/tmp/tabularis-x1-c-bootstrap-first.log`와
 `/tmp/tabularis-x1-c-isolated-*-first.log`에 있습니다.
 이 위치는 로컬 실행 근거이며 저장소에 포함된 CI artifact가 아닙니다.
+
+## 운영체제별 후속 실행
+
+| 환경 | 관찰 결과 | GitHub Actions 실행 |
+|---|---|---|
+| Ubuntu 24.04 x64 | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37192427616](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37192427616) |
+| macOS Intel | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37191589019](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37191589019) |
+| Windows 2022 x64 | Rust 런처·core 통과. protocol 검사에서 preload 경로 문제를 확인해 수정 | [실행 37192885995](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37192885995) |
+
+Linux ZIP 해제는 GNU tar 대신 `bsdtar`를 사용하도록 수정했다.
+Windows에서는 native 경로의 표현 차이를 canonical path로 비교하고 ESM preload에 file URL을 전달한다.
+후속 Intel 실행 `37192885995`에서는 큰 JSON의 내용 검사가 fixture의 1초 제한과 충돌했다.
+해당 파일은 고정된 가상 시계를 사용하도록 바꿨으며 기존 38개 검사가 통과했다.
+제품의 시간 제한과 별도 deadline 검사는 변경하지 않았다.
+실패한 최초 CI와 수정 후 실행을 구분하며, Linux/macOS 통과로 Windows 통과를 대신하지 않는다.
+
+호스트의 실제 GUI·CLI·MCP 공통 연결은 Spatial의 [최종 통합 기록](https://github.com/hei5enbug/tabularis-spatial/blob/main/docs/verification.md#최종-통합-실행-기록)에 있다.
+그 검사는 PostGIS를 사용하며 실제 Cosmos 서비스 결과로 표시하지 않는다.
+
+| 계획 요구 사항 | 구현·검증 상태 |
+|---|---|
+| C-R01 | 5개 대상의 패키징·bundled Node 구현 완료. ARM/Rosetta/Intel macOS와 Linux x64 실행 확인, Windows 최종 CI 확인 중 |
+| C-R02–C-R05 | 탐색·원본 JSON·문서 CRUD·페이지 코드와 unit/protocol/UI 검사 완료. 실제 Azure 권한 검증은 보류 |
+| C-R06 | 교차 파티션 정렬·집계 구현과 synthetic 검사 완료. 실제 Azure 수용 검사는 보류 |
+| C-R07–C-R09 | RU·429·ETag·취소·인증 경계 구현과 synthetic 검사 완료. 실제 Azure 인증 검증은 보류 |
+| C-R10 | 단일 공통 계약·Rust 서비스·GUI/MCP/CLI 어댑터 구현 완료. 실제 Cosmos transport 비교는 Azure 검증과 함께 보류 |

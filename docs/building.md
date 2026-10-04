@@ -71,6 +71,7 @@ node scripts/package/cli.mjs \
 ```
 
 Linux는 `--platform linux`와 native arch를 사용합니다.
+ZIP과 tar.gz를 모두 읽는 `/usr/bin/bsdtar`가 필요합니다. Ubuntu에서는 `libarchive-tools`를 설치합니다.
 Windows x64는 `--platform win32 --arch x64`, launcher `.exe`, `node-v24.21.0-win-x64.zip`을 사용합니다.
 Windows tar는 `%SystemRoot%\System32\tar.exe`의 절대 경로를 전달합니다.
 ZIP과 `.sha256` 파일이 발행되며 ZIP 내부 `release.json`에 파일별 크기·SHA와 runtime pin이 있습니다.

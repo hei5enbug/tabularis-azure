@@ -25,10 +25,10 @@ bootstrap은 고정된 host 빌드 입력을 sibling `tabularis-host`에 준비�
 | 패키지 대상 | 현재 실행 근거 |
 | --- | --- |
 | macOS arm64 | 생산 ZIP의 실제 native 설치와 bundled Node 실행 확인 |
-| macOS x64 | Apple Silicon에서 실제 Rosetta 실행 확인 |
+| macOS x64 | 실제 Rosetta 실행과 Intel native CI의 ZIP/runtime 실행 확인 |
 | Linux arm64 | archive 검증만 확인, native 실행 미확인 |
-| Linux x64 | native CI 등록, 아직 실행하지 않음 |
-| Windows x64 | native CI 등록, 아직 실행하지 않음 |
+| Linux x64 | Ubuntu native CI의 ZIP/runtime 실행 확인 |
+| Windows x64 | native 런처·core 검사 통과, protocol fixture 수정 후 CI 확인 중 |
 
 ## 연결과 작업 공간
 
@@ -43,7 +43,7 @@ Cosmos 작업 공간에서 저장된 연결을 명시적으로 선택한 뒤 데
 
 인증, 읽기 전용, continuation과 결과 불명 처리 방법은 [사용 안내](docs/usage.md#안전하게-문서-편집하기)에 있습니다.
 현재 실제 Azure 검증은 사용자 지시에 따라 보류했습니다.
-mock 검사, 실제 macOS 설치, 미실행 CI를 나눈 기록은 [검증 기록](docs/verification.md#관찰한-검사)를 참고하세요.
+mock 검사, 실제 설치, OS별 CI를 나눈 기록은 [검증 기록](docs/verification.md#관찰한-검사)를 참고하세요.
 
 ## 라이선스
 

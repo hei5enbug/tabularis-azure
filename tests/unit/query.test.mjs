@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { queryFixture, queryInput } from "../support/query-fixture.mjs";
 import { MAX_PAGE_BYTES, MAX_SPOOL_BYTES, MAX_SPOOL_ROWS } from "../../dist/query/index.js";
 
+test.beforeEach((t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: 1_700_000_000_000 });
+});
+
 test("초기 빈 페이지는 같은 iterator에서 실제 결과가 나올 때까지 읽는다", async (t) => {
   // given
   const f = queryFixture(t, { pages: [{ resources: [], hasMore: true, ru: 1 }, { resources: [null, [1, { missing: null }]], hasMore: true, token: "native-next", ru: 2 }] });

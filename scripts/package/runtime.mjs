@@ -16,10 +16,15 @@ export function defaultTar() {
   fail('UNSUPPORTED_ARCHIVE_PARSER');
 }
 
-function runTar(tar, args, maxBuffer) {
-  const result = spawnSync(tar, args, { shell: false, windowsHide: true, encoding: null, maxBuffer, timeout: 60000 });
-  if (result.error || result.status !== 0 || result.signal) fail('UNSUPPORTED_ARCHIVE_PARSER');
-  return result.stdout;
+function runTar(tar, archive, args, maxBuffer) {
+  const descriptor = fs.openSync(archive, 'r');
+  try {
+    const result = spawnSync(tar, args, { stdio: [descriptor, 'pipe', 'pipe'], shell: false, windowsHide: true, encoding: null, maxBuffer, timeout: 60000 });
+    if (result.error || result.status !== 0 || result.signal) fail('UNSUPPORTED_ARCHIVE_PARSER');
+    return result.stdout;
+  } finally {
+    fs.closeSync(descriptor);
+  }
 }
 
 function extract({ platform, arch, archive, tar = defaultTar(), expectedPin = NODE_PINS[`${platform}-${arch}`] }) {
@@ -33,15 +38,15 @@ function extract({ platform, arch, archive, tar = defaultTar(), expectedPin = NO
   const root = `node-v${NODE_VERSION}-${platform === 'win32' ? 'win' : platform}-${arch}`;
   const nodeMember = `${root}/${platform === 'win32' ? 'node.exe' : 'bin/node'}`;
   const licenseMember = `${root}/LICENSE`;
-  const list = runTar(tar, ['-tf', archive], 16 * 1024 * 1024).toString('utf8').split('\n').filter(Boolean).map(item => item.endsWith('/') ? item.slice(0, -1) : item);
+  const list = runTar(tar, archive, ['-tf', '-'], 16 * 1024 * 1024).toString('utf8').split(/\r?\n/).filter(Boolean).map(item => item.endsWith('/') ? item.slice(0, -1) : item);
   for (const member of list) safeRelative(member);
   for (const member of [nodeMember, licenseMember]) {
     if (list.filter(value => value === member).length !== 1) fail('INVALID_ARCHIVE');
-    const detail = runTar(tar, ['-tvf', archive, member], 1024 * 1024).toString('utf8').trim().split('\n');
+    const detail = runTar(tar, archive, ['-tvf', '-', member], 1024 * 1024).toString('utf8').trim().split(/\r?\n/);
     if (detail.length !== 1 || !detail[0].startsWith('-')) fail('INVALID_ARCHIVE');
   }
-  const node = runTar(tar, ['-xOf', archive, nodeMember], 256 * 1024 * 1024);
-  const license = runTar(tar, ['-xOf', archive, licenseMember], 8 * 1024 * 1024);
+  const node = runTar(tar, archive, ['-xOf', '-', nodeMember], 256 * 1024 * 1024);
+  const license = runTar(tar, archive, ['-xOf', '-', licenseMember], 8 * 1024 * 1024);
   if (node.length === 0 || license.length === 0) fail('INVALID_ARCHIVE');
   return { node, license, archive_sha256: expectedPin, runtime_path: platform === 'win32' ? 'runtime/node.exe' : 'runtime/bin/node' };
 }

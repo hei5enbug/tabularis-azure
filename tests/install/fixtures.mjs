@@ -68,8 +68,8 @@ export function fixture(t) {
   write(path.join(root, 'archive', archiveRoot, 'LICENSE'), 'Synthetic runtime license.');
   const runtimeArchive = path.join(root, 'runtime.tar.gz');
   const tarExecutable = defaultTar();
-  const tar = spawnSync(tarExecutable, ['-czf', runtimeArchive, '-C', path.join(root, 'archive'), archiveRoot], { shell: false });
-  if (tar.status !== 0) throw new Error('fixture archive unavailable');
+  const tar = spawnSync(tarExecutable, ['-czf', '../runtime.tar.gz', archiveRoot], { cwd: path.join(root, 'archive'), shell: false });
+  if (tar.status !== 0) throw new Error('fixture archive unavailable', { cause: tar.error ?? tar.stderr?.toString('utf8') });
   const expectedRuntimePin = sha256(fs.readFileSync(runtimeArchive));
   return { root, source, launcher, contracts, options: { platform: 'darwin', arch: 'arm64', source, launcher, runtimeArchive, expectedRuntimePin, output: path.join(root, 'bundle.zip'), tar: tarExecutable } };
 }

@@ -189,7 +189,7 @@ describe('연결 선택과 설정', () => {
     // given
     sdk.service = fakeService(async request => request.operation === 'connection.list' ? response({ connections: [connection] }) : request.operation === 'catalog.databases' ? response({ databases: ['db'] }) : request.operation === 'catalog.objects' ? response({ objects: [{ name: 'container', kind: 'container' }] }) : response(containerMetadata));
     render(<Workspace pluginId="cosmos-nosql" initialConnectionId="cosmos-a" />);
-    const scenario = async () => { await screen.findByLabelText('컨테이너'); fireEvent.click(screen.getByRole('button', { name: '데이터베이스 목록' })); await settled(); fireEvent.click(screen.getByRole('button', { name: '컨테이너 목록' })); await settled(); fireEvent.change(screen.getByLabelText('컨테이너'), { target: { value: 'container' } }); fireEvent.click(screen.getByRole('button', { name: '컨테이너 정보 확인' })); await screen.findByText(/파티션 키: \/tenant → \/nested\/region → \/optional/); };
+    const scenario = async () => { await screen.findByLabelText('컨테이너'); fireEvent.click(screen.getByRole('button', { name: '데이터베이스 목록' })); await settled(); fireEvent.click(screen.getByRole('button', { name: '컨테이너 목록' })); await settled(); fireEvent.change(screen.getByLabelText('컨테이너'), { target: { value: 'container' } }); fireEvent.click(screen.getByRole('button', { name: '컨테이너 정보 확인' })); await screen.findByText(/파티션 키: \/tenant → \/nested\/region → \/optional/); await screen.findByLabelText('/optional 형식'); };
     // when
     await scenario();
     // then

@@ -1,1 +1,2 @@
 build-support/host/** -text
+scripts/package/licenses/** -text

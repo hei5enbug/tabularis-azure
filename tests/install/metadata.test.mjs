@@ -105,7 +105,7 @@ function assets() {
 
 test('현재 빌드 산출물에 패키징용 엔트리와 UI 및 CSS가 있다', () => {
   // given
-  const expected = ['dist/index.js', 'ui/dist/index.js', 'ui/dist/style.css'];
+  const expected = [path.join('dist', 'index.js'), path.join('ui', 'dist', 'index.js'), path.join('ui', 'dist', 'style.css')];
   // when
   const available = assets();
   // then

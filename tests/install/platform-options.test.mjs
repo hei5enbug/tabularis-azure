@@ -8,7 +8,7 @@ import { productionOptions } from './production-harness.mjs';
 
 function capture(action) { try { return { value: action(), code: null }; } catch (error) { return { value: null, code: error.code ?? error.message }; } }
 const windows = { TABULARIS_C3B_TEST_LAUNCHER: 'C:\\fixture\\launcher.exe', TABULARIS_C3B_TEST_NODE_ARCHIVE: 'C:\\fixture\\node.zip', TABULARIS_C3B_TEST_PYTHON: 'C:\\fixture\\python.exe', TABULARIS_C3B_TEST_NODE_CACHE: 'C:\\fixture\\cache', SystemRoot: 'C:\\Windows' };
-const linux = { TABULARIS_C3B_TEST_LAUNCHER: '/fixture/launcher', TABULARIS_C3B_TEST_NODE_ARCHIVE: '/fixture/node.tar.gz' };
+const linux = { TABULARIS_C3B_TEST_LAUNCHER: '/fixture/launcher', TABULARIS_C3B_TEST_NODE_ARCHIVE: '/fixture/node.tar.gz', TABULARIS_C3B_TEST_NODE_CACHE: '/fixture/cache' };
 
 for (const [platform, hostArch, arches] of [['darwin', 'arm64', ['arm64', 'x64']], ['darwin', 'x64', ['x64']], ['linux', 'arm64', ['arm64']], ['linux', 'x64', ['x64']], ['win32', 'x64', ['x64']]]) {
   test(`${platform} ${hostArch}는 승인된 native 실행 대상만 선택한다`, () => {
@@ -109,9 +109,10 @@ for (const key of ['TABULARIS_C3B_TEST_NODE_CACHE', 'TABULARIS_C3B_TEST_PYTHON']
 
 test('비macOS cache는 system temp 하위 전용 경로를 기본으로 사용한다', () => {
   // given
+  const platform = process.platform === 'win32' ? 'win32' : 'linux';
   const expected = path.join(os.tmpdir(), 'tabularis-runtime-cache', 'node-v24.21.0');
   // when
-  const actual = runtimeCache('linux', {});
+  const actual = runtimeCache(platform, {});
   // then
   assert.equal(actual, expected);
 });

@@ -165,7 +165,8 @@ test('Node member가 링크이면 압축 해제 전에 거부한다', t => {
   const node = path.join(value.root, 'archive/node-v24.21.0-darwin-arm64/bin/node');
   fs.unlinkSync(node);
   fs.symlinkSync(value.launcher, node);
-  spawnSync(value.options.tar, ['-czf', value.options.runtimeArchive, '-C', path.join(value.root, 'archive'), 'node-v24.21.0-darwin-arm64'], { shell: false });
+  const archive = spawnSync(value.options.tar, ['-czf', '../runtime.tar.gz', 'node-v24.21.0-darwin-arm64'], { cwd: path.join(value.root, 'archive'), shell: false });
+  if (archive.status !== 0) throw new Error('fixture archive unavailable', { cause: archive.error ?? archive.stderr?.toString('utf8') });
   const expectedPin = sha256(fs.readFileSync(value.options.runtimeArchive));
   // when
   const result = capture(() => extractPinnedRuntime({ platform: 'darwin', arch: 'arm64', archive: value.options.runtimeArchive, expectedPin, tar: value.options.tar }));

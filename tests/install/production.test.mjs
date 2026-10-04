@@ -37,7 +37,7 @@ for (const { platform, arch } of selectTargets(process.platform, process.arch)) 
     assert.equal(actual.smoke.cleaned, true);
     assert.equal(actual.smoke.hostArch, process.arch);
     assert.equal(actual.smoke.version.status, 0);
-    assert.equal(actual.smoke.version.stdout, 'v24.21.0\n');
+    assert.equal(actual.smoke.version.stdout, platform === 'win32' ? 'v24.21.0\r\n' : 'v24.21.0\n');
     assert.equal(actual.smoke.version.stderr, '');
     assert.equal(actual.smoke.identity.status, 0);
     assert.deepEqual(actual.smoke.identity.data, { version: 'v24.21.0', arch, platform });

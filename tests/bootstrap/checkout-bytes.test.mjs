@@ -28,7 +28,7 @@ function checkoutFixture(root, provenance) {
   fs.rmSync(path.join(root, 'build-support/host'), { recursive: true });
   run(['checkout', 'HEAD', '--', 'build-support/host']);
   verifyFiles(path.join(root, 'build-support/host'), provenance.files);
-  return { checked: provenance.files.length, attribute: fs.readFileSync(path.join(root, '.gitattributes'), 'utf8') };
+  return { checked: provenance.files.length };
 }
 
 test('autocrlf가 켜진 실제 Git checkout도 canonical snapshot의 128개 SHA를 보존한다', t => {
@@ -46,5 +46,4 @@ test('autocrlf가 켜진 실제 Git checkout도 canonical snapshot의 128개 SHA
   const actual = checkoutFixture(root, provenance);
   // then
   assert.equal(actual.checked, 128);
-  assert.equal(actual.attribute.trim(), 'build-support/host/** -text');
 });

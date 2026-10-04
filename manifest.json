@@ -22,7 +22,12 @@
     "cancel_v1": true,
     "metadata_discovery": true
   },
-  "data_types": [{ "name": "JSON", "category": "json" }],
+  "data_types": [
+    {
+      "name": "JSON",
+      "category": "json"
+    }
+  ],
   "settings": [
     {
       "key": "endpoint",
@@ -77,9 +82,20 @@
       "slot": "row-editor-sidebar.header.actions",
       "module": "ui/dist/index.js",
       "driver": "cosmos-nosql"
+    },
+    {
+      "slot": "settings.plugin.actions",
+      "module": "ui/dist/index.js",
+      "driver": "cosmos-nosql"
     }
   ],
   "paradigms": [
     "document"
+  ],
+  "ui_assets": [
+    {
+      "path": "ui/dist/style.css",
+      "mime": "text/css"
+    }
   ]
 }

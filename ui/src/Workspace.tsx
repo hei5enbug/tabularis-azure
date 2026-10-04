@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { usePluginService, usePluginTheme, usePluginTranslation } from '@tabularis/plugin-api';
 import { AuthPanel } from './AuthPanel';
+import { PluginStyle } from './PluginStyle';
 import { ConnectionPanel } from './ConnectionPanel';
 import { DocumentPanel, type DocumentSelection } from './DocumentPanel';
 import { QueryPanel } from './QueryPanel';
@@ -31,6 +32,7 @@ export function Workspace({ pluginId, initialConnectionId = null, snapshot = nul
   const colors = theme.colors;
   const style = colors ? { '--cosmos-bg': colors.bg.base, '--cosmos-input': colors.bg.input, '--cosmos-text': colors.text.primary, '--cosmos-muted': colors.text.secondary, '--cosmos-border': colors.border.default, '--cosmos-accent': colors.accent.primary, '--cosmos-error': colors.accent.error } as CSSProperties : undefined;
   return <main className="cosmos-ui" style={style} aria-label={t('workspace', { defaultValue: 'Cosmos 작업 공간' })}>
+    <PluginStyle pluginId={pluginId} />
     <label>Cosmos 연결<select ref={chooser} value={selectedId} onChange={event => { scope.cancel(); setSelectedId(event.target.value); setError(''); }}><option value="">연결 선택</option>{list.map(connection => <option key={connection.connection_id} value={connection.connection_id}>{connection.name}</option>)}</select></label>
     <button disabled={loading} onClick={() => { setLoading(true); void refresh().catch(failure => setError(errorText(failure))).finally(() => setLoading(false)); }}>최신 연결 목록</button>
     {loading && <p role="status">연결 목록을 불러오고 있습니다.</p>}

@@ -12,9 +12,10 @@ import { Workspace } from '../src/Workspace';
 import CosmosActions from '../src/index';
 import { checked, checkedResponse, connection, containerMetadata, failure, original, response } from './fixtures';
 
-const sdk = vi.hoisted(() => ({ service: null as unknown as UsePluginServiceReturn, openModal: vi.fn(), closeModal: vi.fn() }));
+const sdk = vi.hoisted(() => ({ service: null as unknown as UsePluginServiceReturn, openModal: vi.fn(), closeModal: vi.fn(), assets: { resolve: vi.fn(async () => ({ url: "blob:synthetic-cosmos-css", dispose: vi.fn() })) } }));
 vi.mock('@tabularis/plugin-api', () => ({
   usePluginService: () => sdk.service,
+  usePluginAssets: () => sdk.assets,
   usePluginModal: () => ({ openModal: sdk.openModal, closeModal: sdk.closeModal }),
   usePluginTheme: () => ({ colors: null, isDark: false }),
   usePluginTranslation: () => (_key: string, options?: { defaultValue?: string }) => options?.defaultValue || _key,
@@ -86,6 +87,25 @@ describe('연결 선택과 설정', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cosmos 작업 공간' }));
     // then
     expect(sdk.openModal).toHaveBeenCalledWith(expect.objectContaining({ title: 'Cosmos 작업 공간', size: 'xl' }));
+  });
+  it('실제 작업 공간은 여는 actions가 닫힌 뒤에도 자체 스타일 링크를 유지한다', async () => {
+    // given
+    sdk.assets.resolve.mockClear();
+    const opener = render(<CosmosActions pluginId="cosmos-nosql" context={{ targetPluginId: 'cosmos-nosql' }} />);
+    const openThenCloseActions = async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Cosmos 작업 공간' }));
+      const content = sdk.openModal.mock.calls.at(-1)![0].content;
+      opener.unmount();
+      const workspace = render(content);
+      await settled();
+      return workspace;
+    };
+    // when
+    const actual = await openThenCloseActions();
+    // then
+    expect(sdk.assets.resolve).toHaveBeenCalledTimes(2);
+    expect(actual.container.querySelector('link[rel="stylesheet"]')).toHaveAttribute('href', 'blob:synthetic-cosmos-css');
+    expect(screen.getByRole('main')).toHaveAttribute('aria-label', 'Cosmos 작업 공간');
   });
   it('연결 context가 보장되지 않은 footer에는 작업 버튼을 만들지 않는다', () => {
     // given

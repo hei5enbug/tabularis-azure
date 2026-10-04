@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { validatedManifest, requiredAsset, uiStyle } from '../../scripts/package/manifest.mjs';
+import { ACCEPTED_MANIFEST, fixture, write } from './fixtures.mjs';
 
 const source = fileURLToPath(new URL('../../', import.meta.url));
 const readJSON = relative => JSON.parse(fs.readFileSync(path.join(source, relative), 'utf8'));
@@ -28,17 +29,38 @@ test('실제 Cosmos manifest는 완료된 기능과 고정 호스트 버전으�
   assert.doesNotMatch(manifest.description, /bootstrap|unavailable/i);
 });
 
-test('네 UI slot은 같은 Cosmos 드라이버와 번들 엔트리를 사용한다', () => {
+test('다섯 UI slot은 같은 Cosmos 드라이버와 번들 엔트리를 사용한다', () => {
   // given
   const platform = 'darwin';
   // when
   const manifest = validatedManifest(source, platform);
   // then
   assert.deepEqual(manifest.ui_extensions.map(extension => extension.slot).sort(), [
-    'connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions',
+    'connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions', 'settings.plugin.actions',
   ].sort());
   assert.ok(manifest.ui_extensions.every(extension => extension.driver === 'cosmos-nosql' && extension.module === 'ui/dist/index.js'));
+  assert.deepEqual(manifest.ui_assets, [{ path: 'ui/dist/style.css', mime: 'text/css' }]);
 });
+
+for (const [name, mutate] of [
+  ['누락 CSS 선언', value => { delete value.ui_assets; }],
+  ['추가 CSS 선언', value => { value.ui_assets.push(value.ui_assets[0]); }],
+  ['다른 CSS 경로', value => { value.ui_assets[0].path = 'other.css'; }],
+  ['다른 CSS MIME', value => { value.ui_assets[0].mime = 'text/javascript'; }],
+  ['추가 CSS 필드', value => { value.ui_assets[0].extra = true; }],
+]) {
+  test(`${name}은 패키징 manifest 검증에서 거부된다`, t => {
+    // given
+    const value = fixture(t);
+    const manifest = structuredClone(ACCEPTED_MANIFEST);
+    mutate(manifest);
+    write(path.join(value.source, 'manifest.json'), manifest);
+    // when
+    const actual = (() => { try { validatedManifest(value.source, 'darwin'); return null; } catch (error) { return error.code; } })();
+    // then
+    assert.equal(actual, 'MANIFEST_NOT_READY');
+  });
+}
 
 test('공개 연결 설정은 자격 증명 참조와 비밀 값을 입력받지 않는다', () => {
   // given

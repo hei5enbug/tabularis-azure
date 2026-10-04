@@ -4,7 +4,7 @@ import { boundedLimits, fail } from './errors.mjs';
 import { readJSON, regularWithin } from './files.mjs';
 import { MIN_HOST_VERSION } from './pins.mjs';
 
-const UI_SLOTS = new Set(['connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions']);
+const UI_SLOTS = new Set(['connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions', 'settings.plugin.actions']);
 const FALSE_CAPABILITIES = ['schemas', 'views', 'routines', 'file_based', 'alter_primary_key', 'manage_tables', 'explain'];
 const TRUE_CAPABILITIES = ['documents_v1', 'query_page_v1', 'cancel_v1', 'metadata_discovery'];
 
@@ -14,10 +14,11 @@ function closed(value, keys) {
 
 export function validatedManifest(source, platform) {
   const manifest = readJSON(regularWithin(source, 'manifest.json'));
-  if (!closed(manifest, ['id', 'name', 'kind', 'engine', 'version', 'description', 'executable', 'connection_metadata', 'service_protocol', 'min_runtime_version', 'paradigms', 'capabilities', 'data_types', 'settings', 'ui_extensions']) || manifest.id !== 'cosmos-nosql' || manifest.name !== 'cosmos-nosql' || manifest.kind !== 'driver' || manifest.engine !== 'cosmos-nosql' || manifest.executable !== 'cosmos-nosql' || manifest.connection_metadata !== true || manifest.service_protocol !== 1 || manifest.min_runtime_version !== MIN_HOST_VERSION || typeof manifest.version !== 'string' || !manifest.version.trim() || typeof manifest.description !== 'string' || !manifest.description.trim() || /bootstrap|unavailable/i.test(manifest.description)) fail('MANIFEST_NOT_READY');
+  if (!closed(manifest, ['id', 'name', 'kind', 'engine', 'version', 'description', 'executable', 'connection_metadata', 'service_protocol', 'min_runtime_version', 'paradigms', 'capabilities', 'data_types', 'settings', 'ui_extensions', 'ui_assets']) || manifest.id !== 'cosmos-nosql' || manifest.name !== 'cosmos-nosql' || manifest.kind !== 'driver' || manifest.engine !== 'cosmos-nosql' || manifest.executable !== 'cosmos-nosql' || manifest.connection_metadata !== true || manifest.service_protocol !== 1 || manifest.min_runtime_version !== MIN_HOST_VERSION || typeof manifest.version !== 'string' || !manifest.version.trim() || typeof manifest.description !== 'string' || !manifest.description.trim() || /bootstrap|unavailable/i.test(manifest.description)) fail('MANIFEST_NOT_READY');
   if (!closed(manifest.capabilities, [...FALSE_CAPABILITIES, ...TRUE_CAPABILITIES, 'identifier_quote']) || !FALSE_CAPABILITIES.every(key => manifest.capabilities[key] === false) || !TRUE_CAPABILITIES.every(key => manifest.capabilities[key] === true) || manifest.capabilities.identifier_quote !== '"') fail('MANIFEST_NOT_READY');
   if (!Array.isArray(manifest.paradigms) || !manifest.paradigms.includes('document') || !manifest.paradigms.every(value => typeof value === 'string' && value.trim()) || !Array.isArray(manifest.settings) || !Array.isArray(manifest.data_types) || manifest.data_types.length !== 1 || !closed(manifest.data_types[0], ['name', 'category']) || manifest.data_types[0].name !== 'JSON' || manifest.data_types[0].category !== 'json') fail('MANIFEST_NOT_READY');
   if (!Array.isArray(manifest.ui_extensions) || manifest.ui_extensions.length !== UI_SLOTS.size || !manifest.ui_extensions.every(extension => closed(extension, ['slot', 'module', 'driver']) && UI_SLOTS.has(extension.slot) && extension.module === 'ui/dist/index.js' && extension.driver === 'cosmos-nosql') || new Set(manifest.ui_extensions.map(extension => extension.slot)).size !== UI_SLOTS.size) fail('MANIFEST_NOT_READY');
+  if (!Array.isArray(manifest.ui_assets) || manifest.ui_assets.length !== 1 || !closed(manifest.ui_assets[0], ['path', 'mime']) || manifest.ui_assets[0].path !== 'ui/dist/style.css' || manifest.ui_assets[0].mime !== 'text/css') fail('MANIFEST_NOT_READY');
   if (platform === 'win32') manifest.executable = 'cosmos-nosql.exe';
   return manifest;
 }

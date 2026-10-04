@@ -140,8 +140,8 @@ with zipfile.ZipFile(bundle) as archive:
     runtime='runtime/node.exe' if platform=='win32' else 'runtime/bin/node'
     assert manifest['executable']==executable and manifest['paradigms']==['document']
     assert executable in names and runtime in names
-    assert len(manifest['ui_extensions'])==4 and all(item['driver']=='cosmos-nosql' and item['module']=='ui/dist/index.js' for item in manifest['ui_extensions'])
-    assert {item['slot'] for item in manifest['ui_extensions']}=={'connection-modal.extra_fields','data-grid.toolbar.actions','row-edit-modal.footer.before','row-editor-sidebar.header.actions'}
+    assert len(manifest['ui_extensions'])==5 and all(item['driver']=='cosmos-nosql' and item['module']=='ui/dist/index.js' for item in manifest['ui_extensions'])
+    assert {item['slot'] for item in manifest['ui_extensions']}=={'connection-modal.extra_fields','data-grid.toolbar.actions','row-edit-modal.footer.before','row-editor-sidebar.header.actions','settings.plugin.actions'}
     assert all(manifest['capabilities'][key] is True for key in ('documents_v1','query_page_v1','cancel_v1','metadata_discovery'))
     assert len(archive.read('ui/dist/index.js'))>0 and len(archive.read('ui/dist/style.css'))>0
     assert hashlib.sha256(archive.read('dist/driver.mjs')).hexdigest()==driver_hash

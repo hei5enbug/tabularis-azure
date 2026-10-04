@@ -15,7 +15,8 @@ export const ACCEPTED_MANIFEST = {
   service_protocol: 1, min_runtime_version: '0.26.1-spatial.1', paradigms: ['document'],
   capabilities: { schemas: false, views: false, routines: false, file_based: false, identifier_quote: '"', alter_primary_key: false, manage_tables: false, explain: false, documents_v1: true, query_page_v1: true, cancel_v1: true, metadata_discovery: true },
   data_types: [{ name: 'JSON', category: 'json' }], settings: [],
-  ui_extensions: ['connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions'].map(slot => ({ slot, module: 'ui/dist/index.js', driver: 'cosmos-nosql' })),
+  ui_assets: [{ path: 'ui/dist/style.css', mime: 'text/css' }],
+  ui_extensions: ['connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions', 'settings.plugin.actions'].map(slot => ({ slot, module: 'ui/dist/index.js', driver: 'cosmos-nosql' })),
 };
 
 export function write(file, value) {

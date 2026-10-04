@@ -63,8 +63,8 @@ output 부모 디렉터리는 미리 만들고 기존 output 파일은 사용하
 ```sh
 node scripts/package/cli.mjs \
   --platform darwin --arch arm64 \
-  --source /absolute/tabularis-cosmos \
-  --launcher /absolute/target/release/tabularis-cosmos-launcher \
+  --source /absolute/tabularis-azure \
+  --launcher /absolute/target/release/tabularis-azure-launcher \
   --runtime-archive /absolute/node-v24.21.0-darwin-arm64.tar.gz \
   --output /absolute/output/cosmos-nosql.zip \
   --tar /usr/bin/tar

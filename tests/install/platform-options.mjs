@@ -57,8 +57,8 @@ export function fixturePaths({ platform = process.platform, arch = process.arch,
   const cache = runtimeCache(platform, env);
   const triple = arch === 'arm64' ? 'aarch64-apple-darwin' : 'x86_64-apple-darwin';
   const launcher = absoluteInput(env.TABULARIS_C3B_TEST_LAUNCHER ?? (platform === 'darwin' ? production
-    ? paths.join(RELEASE_TARGET, triple, 'release', 'tabularis-cosmos-launcher')
-    : paths.join(DEBUG_TARGET, ...(arch === 'x64' ? [triple] : []), 'debug', 'tabularis-cosmos-launcher') : undefined), platform);
+    ? paths.join(RELEASE_TARGET, triple, 'release', 'tabularis-azure-launcher')
+    : paths.join(DEBUG_TARGET, ...(arch === 'x64' ? [triple] : []), 'debug', 'tabularis-azure-launcher') : undefined), platform);
   const runtimeArchive = absoluteInput(env.TABULARIS_C3B_TEST_NODE_ARCHIVE ?? (platform === 'darwin' ? paths.join(cache, names.archive) : undefined), platform);
   const tar = platform === 'win32' ? paths.join(absoluteInput(env.SystemRoot, platform), 'System32', 'tar.exe') : platform === 'darwin' ? '/usr/bin/tar' : '/usr/bin/bsdtar';
   return { platform, arch, launcher, runtimeArchive, python: pythonExecutable(platform, env), tar };

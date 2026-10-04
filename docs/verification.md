@@ -68,9 +68,9 @@ bootstrap·CI 전용 검사 25개는 source SHA·lock·no-overwrite·pin·cache 
 
 | 환경 | 관찰 결과 | GitHub Actions 실행 |
 |---|---|---|
-| Ubuntu 24.04 x64 | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37194631990) |
-| macOS Intel | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37194631990) |
-| Windows 2022 x64 | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-cosmos/actions/runs/37194631990) |
+| Ubuntu 24.04 x64 | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-azure/actions/runs/37194631990) |
+| macOS Intel | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-azure/actions/runs/37194631990) |
+| Windows 2022 x64 | ZIP·bundled launcher를 포함한 native job 통과 | [실행 37194631990](https://github.com/hei5enbug/tabularis-azure/actions/runs/37194631990) |
 
 위 세 job은 코드 commit `48308ecbda57fa5391db0e3c48f8f270d6f86aee`에서 모두 통과했다.
 

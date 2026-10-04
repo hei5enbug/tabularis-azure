@@ -26,7 +26,7 @@ test('CI YAML은 private sibling checkout 없이 고정된 세 native x64 runner
   assert.deepEqual(actual.permissions, { contents: 'read' });
   assert.deepEqual(actual.jobs.native.strategy.matrix.os, ['ubuntu-24.04', 'windows-2022', 'macos-15-intel']);
   assert.equal(actual.jobs.native.steps.filter(step => step.uses?.startsWith('actions/checkout@')).length, 1);
-  assert.equal(actual.jobs.native.steps[0].with.path, 'tabularis-cosmos');
+  assert.equal(actual.jobs.native.steps[0].with.path, 'tabularis-azure');
   assert.ok(actual.jobs.native.steps.filter(step => step.uses).every(step => /@[a-f0-9]{40}$/.test(step.uses)));
   assert.equal(yaml.includes('host_repository'), false);
   assert.equal(yaml.includes('test:live'), false);

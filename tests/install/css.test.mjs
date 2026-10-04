@@ -20,7 +20,7 @@ test('동일한 두 CSS를 전체 buffer 읽기 없이 비교한다', t => {
   // given
   const value = fixture(t);
   const canonical = path.join(value.source, 'ui/dist/style.css');
-  write(canonical, fs.readFileSync(path.join(value.source, 'ui/dist/cosmos-nosql-ui.css')));
+  write(canonical, fs.readFileSync(path.join(value.source, 'ui/dist/azure-ui.css')));
   // when
   const result = compareWithoutBulkRead(value.source);
   // then
@@ -29,11 +29,11 @@ test('동일한 두 CSS를 전체 buffer 읽기 없이 비교한다', t => {
   assert.equal(result.bulkReads, 0);
 });
 
-for (const [title, name] of [['canonical CSS만 있어도 허용한다', 'style.css'], ['빌드 이름의 CSS만 있어도 허용한다', 'cosmos-nosql-ui.css']]) {
+for (const [title, name] of [['canonical CSS만 있어도 허용한다', 'style.css'], ['빌드 이름의 CSS만 있어도 허용한다', 'azure-ui.css']]) {
   test(title, t => {
     // given
     const value = fixture(t);
-    if (name === 'style.css') fs.renameSync(path.join(value.source, 'ui/dist/cosmos-nosql-ui.css'), path.join(value.source, 'ui/dist/style.css'));
+    if (name === 'style.css') fs.renameSync(path.join(value.source, 'ui/dist/azure-ui.css'), path.join(value.source, 'ui/dist/style.css'));
     // when
     const result = capture(() => uiStyle(value.source));
     // then
@@ -60,7 +60,7 @@ for (const [title, both] of [['두 CSS 중 큰 sparse 입력은 내용 읽기 �
   test(title, t => {
     // given
     const value = fixture(t);
-    const built = path.join(value.source, 'ui/dist/cosmos-nosql-ui.css');
+    const built = path.join(value.source, 'ui/dist/azure-ui.css');
     fs.truncateSync(built, 256 * 1024 * 1024 + 1);
     if (both) write(path.join(value.source, 'ui/dist/style.css'), 'normal CSS');
     // when
@@ -74,7 +74,7 @@ for (const [title, both] of [['두 CSS 중 큰 sparse 입력은 내용 읽기 �
 test('CSS 파일의 심볼릭 링크를 거부한다', t => {
   // given
   const value = fixture(t);
-  fs.symlinkSync(path.join(value.source, 'ui/dist/cosmos-nosql-ui.css'), path.join(value.source, 'ui/dist/style.css'));
+  fs.symlinkSync(path.join(value.source, 'ui/dist/azure-ui.css'), path.join(value.source, 'ui/dist/style.css'));
   // when
   const result = capture(() => uiStyle(value.source));
   // then
@@ -127,7 +127,7 @@ test('fd stat 뒤 커진 CSS도 선언된 크기와 한 바이트까지만 읽�
   // given
   const value = fixture(t);
   const canonical = path.join(value.source, 'ui/dist/style.css');
-  const data = fs.readFileSync(path.join(value.source, 'ui/dist/cosmos-nosql-ui.css'));
+  const data = fs.readFileSync(path.join(value.source, 'ui/dist/azure-ui.css'));
   write(canonical, data);
   const target = fs.realpathSync(canonical);
   // when

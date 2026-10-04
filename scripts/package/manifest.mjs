@@ -63,7 +63,7 @@ function styleHash(input) {
 }
 
 export function uiStyle(source) {
-  const relatives = ['ui/dist/style.css', 'ui/dist/cosmos-nosql-ui.css'].filter(relative => styleExists(source, relative));
+  const relatives = ['ui/dist/style.css', 'ui/dist/azure-ui.css'].filter(relative => styleExists(source, relative));
   if (relatives.length === 0) fail('ASSET_MISSING');
   const inputs = [];
   try {

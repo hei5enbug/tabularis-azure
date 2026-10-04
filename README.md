@@ -1,6 +1,10 @@
-# Tabularis Cosmos DB for NoSQL
+# Tabularis Azure
 
-Azure Cosmos DB for NoSQL의 연결, JSON 쿼리와 문서 편집을 Tabularis에서 제공합니다.
+Tabularis의 Azure 연동을 위한 저장소입니다.
+현재 Cosmos DB for NoSQL 드라이버, 문서 작업 공간과 Entra·Azure CLI 인증 UI를 제공합니다.
+Azure SQL은 기존 SQL Server 플러그인을 재사용합니다. 공통 Rust 인증 서비스와 SQL Server 연동 패치는
+[tabularis-spatial](https://github.com/hei5enbug/tabularis-spatial)의 `integration/`에서 제공합니다.
+저장된 연결과 설치 호환성을 위해 Cosmos 드라이버의 식별자는 `cosmos-nosql`로 유지합니다.
 MongoDB API와 SQL 트랜잭션 세션은 지원하지 않습니다.
 플러그인 버전은 `0.1.0`이며, 수정된 host `0.26.1-spatial.1` 이상과 service protocol `1`이 필요합니다.
 공개 플러그인 SDK API 버전은 `0.2.0`입니다.
@@ -42,7 +46,7 @@ Cosmos 작업 공간에서 저장된 연결을 명시적으로 선택한 뒤 데
 쓰기에는 연결의 쓰기 허용과 host의 명시적 승인이 필요합니다.
 
 인증, 읽기 전용, continuation과 결과 불명 처리 방법은 [사용 안내](docs/usage.md#안전하게-문서-편집하기)에 있습니다.
-현재 실제 Azure 검증은 사용자 지시에 따라 보류했습니다.
+실제 Azure CLI 토큰 획득은 확인했습니다. 실제 DB 접근과 전체 Azure 검증은 아직 완료하지 않았습니다.
 mock 검사, 실제 설치, OS별 CI를 나눈 기록은 [검증 기록](docs/verification.md#관찰한-검사)를 참고하세요.
 
 ## 라이선스

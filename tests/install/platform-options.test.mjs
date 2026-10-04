@@ -60,7 +60,7 @@ test('macOS debug와 production 기본 launcher 경로 및 cache를 보존한다
   // when
   const actual = inputs.map(input => fixturePaths({ platform: 'darwin', env: {}, ...input }));
   // then
-  assert.deepEqual(actual.map(value => value.launcher), ['/tmp/tabularis-c3b-launcher-target/debug/tabularis-cosmos-launcher', '/tmp/tabularis-c3b-launcher-target/x86_64-apple-darwin/debug/tabularis-cosmos-launcher', '/tmp/tabularis-c3b2b1-launcher-target/aarch64-apple-darwin/release/tabularis-cosmos-launcher', '/tmp/tabularis-c3b2b1-launcher-target/x86_64-apple-darwin/release/tabularis-cosmos-launcher']);
+  assert.deepEqual(actual.map(value => value.launcher), ['/tmp/tabularis-c3b-launcher-target/debug/tabularis-azure-launcher', '/tmp/tabularis-c3b-launcher-target/x86_64-apple-darwin/debug/tabularis-azure-launcher', '/tmp/tabularis-c3b2b1-launcher-target/aarch64-apple-darwin/release/tabularis-azure-launcher', '/tmp/tabularis-c3b2b1-launcher-target/x86_64-apple-darwin/release/tabularis-azure-launcher']);
   assert.ok(actual.every(value => value.runtimeArchive.startsWith('/tmp/tabularis-runtime-cache/node-v24.21.0/')));
   assert.ok(actual.every(value => value.python === '/usr/bin/python3' && value.tar === '/usr/bin/tar'));
 });

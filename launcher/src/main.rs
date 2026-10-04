@@ -1,5 +1,5 @@
 fn main() {
-    use tabularis_cosmos_launcher::{launch, LaunchError, Layout};
+    use tabularis_azure_launcher::{launch, LaunchError, Layout};
     let result = if std::env::args_os().nth(1).is_some() {
         Err(LaunchError::InvalidArguments)
     } else {

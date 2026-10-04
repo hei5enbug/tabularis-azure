@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
-use tabularis_cosmos_launcher::{LaunchError, Layout, REMOVED_ENVIRONMENT};
+use tabularis_azure_launcher::{LaunchError, Layout, REMOVED_ENVIRONMENT};
 
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 const TEST_TIMEOUT: Duration = Duration::from_secs(60);
@@ -44,7 +44,7 @@ impl Fixture {
         #[cfg(not(windows))]
         let (executable, node) = (root.join("Cosmos 런처"), root.join("runtime/bin/node"));
         std::fs::create_dir_all(node.parent().unwrap()).unwrap();
-        std::fs::copy(env!("CARGO_BIN_EXE_tabularis-cosmos-launcher"), &executable).unwrap();
+        std::fs::copy(env!("CARGO_BIN_EXE_tabularis-azure-launcher"), &executable).unwrap();
         std::fs::copy(fixture_node(), &node).unwrap();
         let entry = root.join("dist/driver.mjs");
         std::fs::write(&entry, script).unwrap();

@@ -229,7 +229,7 @@ function publicationWithCleanupFault(options, mode) {
     return unlink(file);
   };
   fs.rmSync = (file, ...args) => {
-    if (mode !== 'unlink' && (path.basename(file).startsWith('tabularis-cosmos-package-') || path.basename(file).startsWith('.tabularis-package-next-'))) {
+    if (mode !== 'unlink' && (path.basename(file).startsWith('tabularis-azure-package-') || path.basename(file).startsWith('.tabularis-package-next-'))) {
       owned.push(file);
       throw new Error('synthetic cleanup failure');
     }

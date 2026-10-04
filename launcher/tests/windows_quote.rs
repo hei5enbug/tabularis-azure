@@ -1,4 +1,4 @@
-use tabularis_cosmos_launcher::{windows_quote::command_line, LaunchError, HEAP_ARGUMENT};
+use tabularis_azure_launcher::{windows_quote::command_line, LaunchError, HEAP_ARGUMENT};
 
 fn utf16(value: &str) -> Vec<u16> {
     value.encode_utf16().collect()

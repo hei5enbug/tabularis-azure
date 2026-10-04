@@ -41,7 +41,7 @@ export function fixture(t) {
   write(path.join(source, 'dist', 'index.js'), `import cosmos from '@azure/cosmos';\nimport { schema } from '@tabularis/service-contracts';\nimport first from 'first';\nimport second from 'second';\nimport cycle from 'cycle';\nimport { helper } from './helper.js';\nprocess.stdout.write(JSON.stringify({cosmos,schema,first,second,cycle,helper,argv:process.argv.slice(2),node:process.version,envAbsent:['NODE_OPTIONS','NODE_PATH','NODE_TLS_REJECT_UNAUTHORIZED','NODE_EXTRA_CA_CERTS','NODE_USE_SYSTEM_CA','SSL_CERT_FILE','SSL_CERT_DIR','OPENSSL_CONF'].every(k=>process.env[k]===undefined)})+'\\n');\nprocess.stdin.setEncoding('utf8');process.stdin.on('data',chunk=>process.stdout.write(chunk));\n`);
   write(path.join(source, 'dist', 'helper.js'), 'export const helper = "relative import works";');
   write(path.join(source, 'ui', 'dist', 'index.js'), 'export default function FixtureUI() {}');
-  write(path.join(source, 'ui', 'dist', 'cosmos-nosql-ui.css'), 'body { color: #123456; }');
+  write(path.join(source, 'ui', 'dist', 'azure-ui.css'), 'body { color: #123456; }');
   pkg(path.join(source, 'node_modules', '@azure', 'cosmos'), '@azure/cosmos', '4.10.1');
   const contracts = pkg(path.join(root, 'workspace', 'service-contracts'), '@tabularis/service-contracts', '1.0.0', { exports: { '.': { import: './dist/index.js' } } });
   write(path.join(contracts, 'dist', 'index.js'), `import fs from 'node:fs';export const schema=JSON.parse(fs.readFileSync(new URL('../schemas/fixture.json',import.meta.url),'utf8')).title;`);

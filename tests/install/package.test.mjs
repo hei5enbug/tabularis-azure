@@ -288,7 +288,7 @@ test('명시적 교체 뒤 checksum 실패는 적용된 부분 게시로 알린�
 test('동일한 두 CSS 입력에서는 canonical 파일을 사용한다', t => {
   // given
   const value = fixture(t);
-  write(path.join(value.source, 'ui/dist/style.css'), fs.readFileSync(path.join(value.source, 'ui/dist/cosmos-nosql-ui.css')));
+  write(path.join(value.source, 'ui/dist/style.css'), fs.readFileSync(path.join(value.source, 'ui/dist/azure-ui.css')));
   // when
   const result = capture(() => packageBundle(value.options));
   // then

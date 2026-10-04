@@ -46,7 +46,7 @@ export function packageBundle({ platform, arch, source, launcher, runtimeArchive
     if (!fs.statSync(source).isDirectory() || !fs.lstatSync(launcher).isFile() || fs.lstatSync(launcher).isSymbolicLink()) fail('INVALID_FILE');
     const manifest = validatedManifest(source, platform);
     const runtime = extractPinnedRuntime({ platform, arch, archive: runtimeArchive, tar, expectedPin: expectedRuntimePin });
-    ownedStage = fs.mkdtempSync(path.join(os.tmpdir(), 'tabularis-cosmos-package-'));
+    ownedStage = fs.mkdtempSync(path.join(os.tmpdir(), 'tabularis-azure-package-'));
     fs.chmodSync(ownedStage, 0o700);
     ownedNext = fs.mkdtempSync(path.join(path.dirname(output), '.tabularis-package-next-'));
     fs.chmodSync(ownedNext, 0o700);

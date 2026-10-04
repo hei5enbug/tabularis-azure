@@ -81,7 +81,7 @@ test('합성 CI 입력은 실제 host 파일 경로와 x64 archive 경로를 ins
     const launcher = path.join(root, 'launcher'); const python = path.join(root, 'python'); const envFile = path.join(root, 'environment');
     fs.writeFileSync(launcher, 'synthetic'); fs.writeFileSync(python, 'synthetic');
     const expectedPython = fs.realpathSync(python);
-    const values = { platform: process.platform, arch: 'x64', launcher, python, cache: root, envFile };
+    const values = { platform: process.platform, arch: 'x64', launcher, python, cache: root, envFile, systemRoot: process.platform === 'win32' ? process.env.SystemRoot : undefined };
     const calls = [];
     const archives = async cache => { calls.push(cache); return Object.fromEntries(Object.keys(NODE_PINS).map(key => [key, path.join(cache, archiveName(key))])); };
     // when

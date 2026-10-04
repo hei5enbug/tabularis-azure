@@ -46,6 +46,8 @@ jobs:
         run: |
           cargo build --locked --release --manifest-path launcher/Cargo.toml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:TABULARIS_C3B_TEST_NODE = (node -p 'process.execPath')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test --locked --manifest-path launcher/Cargo.toml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo clippy --locked --all-targets --manifest-path launcher/Cargo.toml -- -D warnings

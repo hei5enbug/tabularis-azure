@@ -29,13 +29,8 @@ impl Drop for RunningChild {
 }
 
 fn fixture_node() -> PathBuf {
-    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-    let path = PathBuf::from("/tmp/tabularis-runtime-cache/node-v24.21.0/node-v24.21.0-darwin-arm64/bin/node");
-    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-    let path = PathBuf::from("/tmp/tabularis-runtime-cache/node-v24.21.0/node-v24.21.0-darwin-x64/bin/node");
-    #[cfg(not(target_os = "macos"))]
     let path = std::env::var_os("TABULARIS_C3B_TEST_NODE").map(PathBuf::from).expect("전용 synthetic Node fixture 경로가 필요합니다");
-    assert!(path.is_file(), "검증된 전용 Node fixture가 필요합니다");
+    assert!(path.is_absolute() && path.is_file(), "검증된 전용 Node fixture의 절대 경로가 필요합니다");
     path
 }
 

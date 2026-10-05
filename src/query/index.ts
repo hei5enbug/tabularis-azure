@@ -161,15 +161,18 @@ export function createQueryHandlers(clients: ClientProvider): QueryHandlers {
     } catch (error) { return serviceResponse(tracked, null, safeError(mapSdkError(error, tracked))); }
   };
   const legacy: RpcHandler = async (params, context) => {
-    onlyKeys(params, ["params", "driver_context", "query", "parameters", "database", "container", "limit", "page", "partition_key", "ru_budget"]);
+    onlyKeys(params, ["params", "driver_context", "query", "parameters", "database", "container", "limit", "page", "schema", "partition_key", "ru_budget"]);
     if ((params.page ?? 1) !== 1) throw new DriverError("UNSUPPORTED_OPERATION", "Additional Cosmos pages require the query_page cursor API.");
+    if (params.schema !== undefined && params.schema !== null) throw new DriverError("UNSUPPORTED_OPERATION", "Cosmos schemas are unsupported.");
     const database = params.database ?? context.connection?.database;
-    if (typeof params.query !== "string" || typeof database !== "string" || typeof params.container !== "string") throw new DriverError("INVALID_ARGUMENT", "A query text, database, and container are required.");
-    const query = { language: "cosmos_sql", database, container: params.container, text: params.query, parameters: params.parameters ?? [], page_size: params.limit ?? 100, ...(params.partition_key === undefined ? {} : { partition_key: params.partition_key }), ...(params.ru_budget === undefined ? {} : { ru_budget: params.ru_budget }) } as unknown as QueryInput;
+    const container = params.container ?? context.connection?.container;
+    if (typeof params.query !== "string" || typeof database !== "string" || typeof container !== "string") throw new DriverError("INVALID_ARGUMENT", "Set the database and default container in the connection, then enter a Cosmos SQL query such as SELECT * FROM c.");
+    const query = { language: "cosmos_sql", database, container, text: params.query, parameters: params.parameters ?? [], page_size: params.limit ?? 100, ...(params.partition_key === undefined ? {} : { partition_key: params.partition_key }), ...(params.ru_budget === undefined ? {} : { ru_budget: params.ru_budget }) } as unknown as QueryInput;
     const result = await execute(query, context);
     const values = result.data.kind === "json_values" ? result.data.values : [];
     const hasMore = result.cursor !== null || result.snapshot.sets[0]!.rows.length > values.length;
-    return { columns: ["_document"], rows: values.map((value) => [value]), affected_rows: 0, truncated: false, pagination: { page: 1, page_size: query.page_size!, total_rows: result.cursor === null ? result.snapshot.sets[0]!.rows.length : null, has_more: hasMore } };
+    const compat = params.driver_context === undefined;
+    return { columns: ["_document"], rows: values.map((value) => [value]), affected_rows: 0, truncated: compat && hasMore, pagination: { page: 1, page_size: query.page_size!, total_rows: result.cursor === null ? result.snapshot.sets[0]!.rows.length : null, has_more: !compat && hasMore } };
   };
   return { query_page: queryPage, execute_query: legacy, execute: (query, context) => execute(query, context), continue: (query, state, context) => execute(query, context, state) };
 }

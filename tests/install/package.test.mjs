@@ -27,7 +27,7 @@ test('패키지는 고정 레이아웃과 중첩 버전 및 원문 라이선스�
   assert.equal(archive.release.node, '24.21.0');
   assert.equal(archive.release.sdk, '4.10.1');
   assert.equal(archive.release.service_protocol, 1);
-  assert.equal(archive.release.min_runtime_version, '0.26.1-spatial.1');
+  assert.equal(archive.release.min_runtime_version, '0.26.0');
   assert.equal(archive.entries.find(item => item.name === 'cosmos-nosql').mode & 0o777, 0o755);
   assert.equal(archive.entries.find(item => item.name === 'runtime/bin/node').mode & 0o777, 0o755);
   assert.ok(archive.entries.filter(item => !['cosmos-nosql', 'runtime/bin/node'].includes(item.name)).every(item => (item.mode & 0o777) === 0o644));

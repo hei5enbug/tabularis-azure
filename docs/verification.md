@@ -109,3 +109,30 @@ Cosmos 드라이버는 호스트의 transient Entra context를 기존 공식 SDK
 계정 키는 조회하지 않았으며 실제 DB·문서의 생성·수정·삭제도 실행하지 않았다.
 토큰·사용자 식별자·테넌트·구독·실제 리소스 설정은 Git 파일에 남기지 않았다.
 이 확인은 교차 파티션 정렬·집계·페이지 재개·ETag·RU·429 수용 검사의 완료를 의미하지 않는다.
+
+## 공식 0.26.0 기본 호환 경로
+
+2026-10-06 공식 호스트용 읽기 전용 경로를 추가했다. UI 검사 123개와 build/typecheck가 통과했다.
+최종 manifest·패키지·연결·호환·stdio 관련 검사 98개가 통과했다. Azure CLI 검사는 합성 토큰과 실행 어댑터를 사용했으며,
+실제 로그인 캐시와 Azure 데이터 리소스는 읽거나 사용하지 않았다.
+
+macOS ARM64의 실제 Tabularis 0.26.0에 설치했다. 첫 앱 실행에서 JSON 타입 선언에 필요한
+`requires_length`가 빠진 오류를 관찰해 `requires_precision`과 `default_length`를 포함한 호스트 타입 계약을 반영했다.
+metadata 응답과 패키징 검사에도 같은 필드를 적용하고 ZIP을 다시 생성했다.
+
+최종 ZIP은 50,410,858 bytes·9,123 files이며 SHA256은
+`27f1d5537a215b5dcc7f49b8e1c0d9df7aec1d9969a2bad2a34936ab25b40791`다.
+설치 전에 ZIP과 내부 원장의 모든 파일 해시를 확인했다. 공식 MCP 프로세스의 initialize와 tools/list도 통과했다.
+이 검사는 실제 Azure DB 연결 성공을 의미하지 않는다.
+
+[Building Plugins](https://tabularis.dev/wiki/building-plugins),
+[Plugin Guide](https://github.com/TabularisDB/tabularis/blob/main/plugins/PLUGIN_GUIDE.md),
+[연결 metadata](https://github.com/TabularisDB/tabularis/blob/main/plugins/CONNECTION_METADATA.md),
+[SQL Server 플러그인](https://github.com/TabularisDB/tabularis-sqlserver-plugin)의 문서와 실제 0.26.0 소스를 대조했다.
+기본 RPC 입력, 취소 notification, 읽기 전용 metadata, `extra`의 공개 설정과 비밀번호 저장 경로, UI 공개 API를 반영했다.
+플러그인 `extra`에는 endpoint·database·container·공개 인증 선택만 저장하며 키와 토큰을 넣지 않는다.
+SDK 문서 CRUD와 continuation은 공통 서비스가 있는 호스트에서만 활성화한다.
+
+Plugin Center의 작업 슬롯은 targetPluginId로 구분하므로 해당 슬롯의 driver 필터를 제거했다. 후속 패키징 검사 59개가 통과했다.
+공식 앱에서 두 플러그인 활성화를 확인했고, 실제 설치된 Cosmos 실행 파일의 initialize·읽기 전용 metadata·shutdown 응답도 확인했다.
+이 metadata 검사는 합성 주소를 사용했으며 SDK 네트워크를 호출하지 않는다.

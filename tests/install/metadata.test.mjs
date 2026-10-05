@@ -17,7 +17,7 @@ test('실제 Cosmos manifest는 완료된 기능과 고정 호스트 버전으�
   const manifest = validatedManifest(source, platform);
   // then
   assert.equal(manifest.version, '0.1.0');
-  assert.equal(manifest.min_runtime_version, '0.26.1-spatial.1');
+  assert.equal(manifest.min_runtime_version, '0.26.0');
   assert.equal(manifest.service_protocol, 1);
   assert.equal(manifest.connection_metadata, true);
   assert.equal(manifest.capabilities.documents_v1, true);
@@ -25,7 +25,7 @@ test('실제 Cosmos manifest는 완료된 기능과 고정 호스트 버전으�
   assert.equal(manifest.capabilities.cancel_v1, true);
   assert.equal(manifest.capabilities.metadata_discovery, true);
   assert.deepEqual(manifest.paradigms, ['document']);
-  assert.deepEqual(manifest.data_types, [{ name: 'JSON', category: 'json' }]);
+  assert.deepEqual(manifest.data_types, [{ name: 'JSON', category: 'json', requires_length: false, requires_precision: false, default_length: null }]);
   assert.doesNotMatch(manifest.description, /bootstrap|unavailable/i);
 });
 
@@ -38,7 +38,7 @@ test('다섯 UI slot은 같은 Cosmos 드라이버와 번들 엔트리를 사용
   assert.deepEqual(manifest.ui_extensions.map(extension => extension.slot).sort(), [
     'connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions', 'settings.plugin.actions',
   ].sort());
-  assert.ok(manifest.ui_extensions.every(extension => extension.driver === 'cosmos-nosql' && extension.module === 'ui/dist/index.js'));
+  assert.ok(manifest.ui_extensions.every(extension => (extension.slot === 'settings.plugin.actions' ? !Object.hasOwn(extension, 'driver') : extension.driver === 'cosmos-nosql') && extension.module === 'ui/dist/index.js'));
   assert.deepEqual(manifest.ui_assets, [{ path: 'ui/dist/style.css', mime: 'text/css' }]);
 });
 
@@ -68,9 +68,9 @@ test('공개 연결 설정은 자격 증명 참조와 비밀 값을 입력받지
   // when
   const manifest = validatedManifest(source, platform);
   // then
-  assert.deepEqual(manifest.settings.map(setting => setting.key), ['endpoint', 'database', 'auth_mode', 'tenant_id', 'client_id']);
+  assert.deepEqual(manifest.settings, []);
   assert.ok(manifest.settings.every(setting => !/credential|password|secret|token|account_key/.test(setting.key)));
-  assert.deepEqual(manifest.settings.find(setting => setting.key === 'auth_mode').options, ['account_key', 'entra_user', 'entra_service_principal']);
+
 });
 
 test('패키지와 live 명령은 각각의 실제 CLI 진입점에 연결한다', () => {

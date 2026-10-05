@@ -7,10 +7,10 @@ import { connectionContext, type ClientProvider } from "./index.js";
 import { getContainerMetadata } from "./metadata.js";
 import { validateEndpoint } from "./settings.js";
 
-export interface ConnectionHandlers { initialize: RpcHandler; ping: RpcHandler; shutdown: RpcHandler; test_connection: RpcHandler; get_databases: RpcHandler; get_tables: RpcHandler; get_columns: RpcHandler; get_connection_metadata: RpcHandler }
+export interface ConnectionHandlers { initialize: RpcHandler; ping: RpcHandler; shutdown: RpcHandler; test_connection: RpcHandler; get_databases: RpcHandler; get_tables: RpcHandler; get_columns: RpcHandler; get_foreign_keys: RpcHandler; get_indexes: RpcHandler; get_schemas: RpcHandler; get_connection_metadata: RpcHandler }
 export const legacyConnectionMetadata = {
   capabilities: { schemas: false, views: false, materialized_views: false, routines: false, triggers: false, user_management: false, routine_management: false, alter_primary_key: false, alter_column: false, create_foreign_keys: false, manage_tables: false, explain: false, readonly: false },
-  data_types: [{ name: "JSON", category: "json" }], type_mappings: { json: "JSON" },
+  data_types: [{ name: "JSON", category: "json", requires_length: false, requires_precision: false, default_length: null }], type_mappings: { json: "JSON" },
 } satisfies JsonObject;
 function boundedName(value: unknown): string {
   if (typeof value !== "string" || !value || /[\\/#?\u0000-\u001f\u007f]/.test(value) || Buffer.byteLength(value, "utf8") > 255) throw new DriverError("INVALID_ARGUMENT", "A valid database or container name is required.");
@@ -69,7 +69,7 @@ export function createConnectionHandlers(clients: ClientProvider, options: { que
       if (Object.hasOwn(value, "service_protocol") && value.service_protocol !== 1) throw new DriverError("PROTOCOL_MISMATCH", "The requested service protocol is unsupported.");
       if (value.settings !== undefined && !jsonObject(value.settings)) throw new DriverError("INVALID_ARGUMENT", "Plugin settings must be an object.");
       if (jsonObject(value.settings)) {
-        onlyKeys(value.settings, ["endpoint", "database", "auth_mode", "auth_source", "tenant_id", "client_id", "credential_ref"]);
+        onlyKeys(value.settings, ["endpoint", "database", "container", "auth_mode", "auth_source", "tenant_id", "client_id", "credential_ref"]);
         for (const [key, field] of Object.entries(value.settings)) {
           if (typeof field !== "string" || !field) throw new DriverError("INVALID_ARGUMENT", "Plugin connection defaults must be nonempty strings.");
           if (key === "auth_source" && !["oauth", "azure_cli"].includes(field)) throw new DriverError("INVALID_ARGUMENT", "The authentication source is unsupported.");
@@ -108,8 +108,11 @@ export function createConnectionHandlers(clients: ClientProvider, options: { que
     }),
     get_connection_metadata: boundary(async (value, context) => {
       onlyKeys(value, ["params", "driver_context"]);
-      await clients.get(connectionContext(context));
+      if (value.driver_context !== undefined || context.native_v1) await clients.get(connectionContext(context));
       return { ...legacyConnectionMetadata, capabilities: { ...legacyConnectionMetadata.capabilities, readonly: context.read_only !== false } };
     }),
+    get_foreign_keys: async (value) => { onlyKeys(value, ["params", "driver_context", "schema", "table"]); return []; },
+    get_indexes: async (value) => { onlyKeys(value, ["params", "driver_context", "schema", "table"]); return []; },
+    get_schemas: async (value) => { onlyKeys(value, ["params", "driver_context"]); return []; },
   };
 }

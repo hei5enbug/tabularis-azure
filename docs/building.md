@@ -10,7 +10,7 @@
 | pnpm | `10.30.3` |
 | Rust | `1.96.0` |
 | 공식 Cosmos SDK | `4.10.1` |
-| 최소 host runtime | `0.26.1-spatial.1` |
+| 최소 host runtime | 기본 조회 `0.26.0`, 전체 서비스 `0.26.1-spatial.1` |
 | service protocol / 공개 SDK API | `1` / `0.2.0` |
 
 `build-support/host`는 canonical host의 tracked 빌드 입력 128개를 그대로 보관합니다.
@@ -75,8 +75,18 @@ ZIP과 tar.gz를 모두 읽는 `/usr/bin/bsdtar`가 필요합니다. Ubuntu에�
 Windows x64는 `--platform win32 --arch x64`, launcher `.exe`, `node-v24.21.0-win-x64.zip`을 사용합니다.
 Windows tar는 `%SystemRoot%\System32\tar.exe`의 절대 경로를 전달합니다.
 ZIP과 `.sha256` 파일이 발행되며 ZIP 내부 `release.json`에 파일별 크기·SHA와 runtime pin이 있습니다.
-실제 사용자의 Tabularis 플러그인 설치 화면에는 검증된 ZIP을 전달합니다.
-원래 host `0.26.0`은 이 플러그인의 최소 버전에 맞지 않습니다.
+앱을 종료하고 검증한 ZIP의 모든 파일을 아래 폴더에 압축 해제합니다. 이전 설치본은 별도 폴더에 백업합니다.
+
+| OS | 설치 폴더 |
+| --- | --- |
+| macOS | `~/Library/Application Support/tabularis/plugins/drivers/cosmos-nosql/` |
+| Linux | `~/.local/share/tabularis/plugins/drivers/cosmos-nosql/` |
+| Windows | `%APPDATA%\tabularis\plugins\drivers\cosmos-nosql\` |
+
+앱을 다시 열고 설정의 Plugins에서 `cosmos-nosql`을 활성화합니다.
+동봉 launcher와 Node 실행 권한을 보존해야 합니다.
+공식 host `0.26.0`부터 기본 읽기 전용 경로를 지원합니다.
+공통 서비스가 필요한 기능은 실제 host API 제공 여부를 확인해 활성화합니다.
 
 ## native CI
 

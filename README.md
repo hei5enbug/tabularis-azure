@@ -6,7 +6,8 @@ Azure SQL은 기존 SQL Server 플러그인을 재사용합니다. 공통 Rust �
 [tabularis-spatial](https://github.com/hei5enbug/tabularis-spatial)의 `integration/`에서 제공합니다.
 저장된 연결과 설치 호환성을 위해 Cosmos 드라이버의 식별자는 `cosmos-nosql`로 유지합니다.
 MongoDB API와 SQL 트랜잭션 세션은 지원하지 않습니다.
-플러그인 버전은 `0.1.0`이며, 수정된 host `0.26.1-spatial.1` 이상과 service protocol `1`이 필요합니다.
+플러그인 버전은 `0.1.0`이며 Tabularis `0.26.0` 이상에서 기본 조회를 지원합니다.
+문서 수정과 페이지 재개는 공통 서비스 protocol `1`을 제공하는 수정 호스트 `0.26.1-spatial.1`이 필요합니다.
 공개 플러그인 SDK API 버전은 `0.2.0`입니다.
 
 ## 빌드와 설치
@@ -33,6 +34,19 @@ bootstrap은 고정된 host 빌드 입력을 sibling `tabularis-host`에 준비�
 | Linux arm64 | archive 검증만 확인, native 실행 미확인 |
 | Linux x64 | Ubuntu native CI의 ZIP/runtime 실행 확인 |
 | Windows x64 | Windows 2022 native CI의 ZIP/runtime 실행 확인 |
+
+## 호스트별 지원
+
+| 기능 | 공식 0.26.0 이상 | 공통 서비스 호스트 |
+| --- | --- | --- |
+| 계정 키·Azure CLI 사용자 인증 | 연결 비밀번호 또는 Azure CLI 사용 | 보호된 공통 인증 서비스 사용 |
+| DB·컨테이너 탐색과 Cosmos SQL | 기본 컨테이너 조회, 읽기 전용 | 명시한 컨테이너 조회 |
+| continuation·문서 CRUD | 지원하지 않음 | 권한과 ETag를 확인해 지원 |
+| 앱 내 Entra 사용자·서비스 주체 인증 | 지원하지 않음 | 지원 |
+
+버전 문자열 외에 실제 UI API 제공 여부로 지원 경로를 선택합니다.
+새 호스트 버전의 전체 호환성을 자동으로 보장하는 것은 아닙니다.
+기본 조회 설정은 [사용 안내](docs/usage.md#공식-0260-기본-조회)에 있습니다.
 
 ## 연결과 작업 공간
 

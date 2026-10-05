@@ -1,8 +1,8 @@
 import type { AuthMode, JsonObject } from "@tabularis/service-contracts/types";
 import { DriverError } from "../runtime/errors.js";
 
-export interface ConnectionSettings { endpoint: string; database?: string; auth_mode: AuthMode; auth_source?: "oauth" | "azure_cli"; tenant_id?: string; client_id?: string; credential_ref?: string }
-const keys = new Set(["endpoint", "database", "auth_mode", "auth_source", "tenant_id", "client_id", "credential_ref"]);
+export interface ConnectionSettings { endpoint: string; database?: string; container?: string; auth_mode: AuthMode; auth_source?: "oauth" | "azure_cli"; tenant_id?: string; client_id?: string; credential_ref?: string }
+const keys = new Set(["endpoint", "database", "container", "auth_mode", "auth_source", "tenant_id", "client_id", "credential_ref"]);
 function record(value: unknown): Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function text(value: unknown): string | undefined { return typeof value === "string" && value.length > 0 ? value : undefined; }
 export function validateEndpoint(value: string): string {
@@ -34,6 +34,8 @@ export function normalizeConnectionSettings(value: JsonObject): ConnectionSettin
   const selected = extra.database ?? value.database;
   const database = text(Array.isArray(selected) ? selected[0] : selected);
   if (database) settings.database = database;
+  const container = text(extra.container);
+  if (container) settings.container = container;
   for (const key of ["tenant_id", "client_id", "credential_ref"] as const) { const field = text(extra[key] ?? value[key]); if (field) settings[key] = field; }
   if (mode !== "account_key" && (!settings.tenant_id || !settings.client_id)) throw new DriverError("INVALID_ARGUMENT", "Tenant and client IDs are required for Entra authentication.");
   return settings;

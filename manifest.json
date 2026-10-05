@@ -20,57 +20,20 @@
     "documents_v1": true,
     "query_page_v1": true,
     "cancel_v1": true,
-    "metadata_discovery": true
+    "metadata_discovery": true,
+    "readonly": false
   },
   "data_types": [
     {
       "name": "JSON",
-      "category": "json"
+      "category": "json",
+      "requires_length": false,
+      "requires_precision": false,
+      "default_length": null
     }
   ],
-  "settings": [
-    {
-      "key": "endpoint",
-      "label": "HTTPS endpoint",
-      "type": "string",
-      "required": true
-    },
-    {
-      "key": "database",
-      "label": "Database",
-      "type": "string"
-    },
-    {
-      "key": "auth_mode",
-      "label": "Authentication",
-      "type": "select",
-      "options": [
-        "account_key",
-        "entra_user",
-        "entra_service_principal"
-      ]
-    },
-    {
-      "key": "auth_source",
-      "label": "Entra credential source",
-      "type": "select",
-      "options": [
-        "oauth",
-        "azure_cli"
-      ]
-    },
-    {
-      "key": "tenant_id",
-      "label": "Tenant ID",
-      "type": "string"
-    },
-    {
-      "key": "client_id",
-      "label": "Client ID",
-      "type": "string"
-    }
-  ],
-  "min_runtime_version": "0.26.1-spatial.1",
+  "settings": [],
+  "min_runtime_version": "0.26.0",
   "ui_extensions": [
     {
       "slot": "connection-modal.extra_fields",
@@ -94,8 +57,7 @@
     },
     {
       "slot": "settings.plugin.actions",
-      "module": "ui/dist/index.js",
-      "driver": "cosmos-nosql"
+      "module": "ui/dist/index.js"
     }
   ],
   "paradigms": [

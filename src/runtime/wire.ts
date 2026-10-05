@@ -4,6 +4,7 @@ import { normalizeConnectionSettings } from "../connection/settings.js";
 import type { ResolvedContext, RpcRequest } from "./contracts.js";
 import { DriverError } from "./errors.js";
 import { jsonObject, onlyKeys, validateOperationInput } from "./validation.js";
+import { resolveLegacyContext } from "./compat.js";
 
 const operationByMethod = { test_connection: "connection.test", get_databases: "catalog.databases", get_tables: "catalog.objects", get_columns: "catalog.describe", read_document: "document.read", create_document: "document.create", replace_document: "document.replace", delete_document: "document.delete" } as const;
 const controlMethods = new Set(["initialize", "ping", "shutdown", "cancel_request"]);
@@ -29,6 +30,7 @@ export function resolveWireContext(request: RpcRequest): ResolvedContext {
   const params = request.params ?? {};
   if (controlMethods.has(request.method) && request.method !== "ping") return { connection_id: "control", request_id: String(request.id ?? "notification"), deadline_ms: 30_000, read_only: true };
   const wire = params.driver_context;
+  if (wire === undefined) return resolveLegacyContext(request);
   if (!jsonObject(wire)) throw new DriverError("AUTH_REQUIRED", "A host-provided driver context is required.");
   const invalidate = request.method === "service_invalidate_auth";
   onlyKeys(wire, invalidate ? ["protocol_version", "connection_id", "request_id", "deadline_ms", "read_only"] : ["protocol_version", "connection_id", "request_id", "deadline_ms", "read_only", "auth", "session_handle"]);

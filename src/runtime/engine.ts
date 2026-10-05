@@ -9,6 +9,7 @@ import { JsonLineWriter, LineFramer, MAX_FRAME_BYTES } from "./framing.js";
 import { MetricsAccumulator, withRequestMetrics } from "./metrics.js";
 import { jsonObject, onlyKeys } from "./validation.js";
 import { handlerInput, identifier, isV1Request, resolveWireContext } from "./wire.js";
+import { resolveCliAuth } from "./compat.js";
 
 export interface RuntimeOptions {
   handlers?: Partial<Record<(typeof rpcMethods)[number], RpcHandler>>;
@@ -105,6 +106,10 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
       if (pending.context.session_handle !== undefined) throw new DriverError("UNSUPPORTED_OPERATION", "Cosmos SQL sessions are unsupported.");
       const handler = handlers[pending.request.method as keyof typeof handlers];
       if (!handler) throw new DriverError("CAPABILITY_UNAVAILABLE", "The requested driver handler is unavailable.");
+      if (pending.request.params?.driver_context === undefined && pending.context.connection?.auth_source === "azure_cli" && !pending.context.auth && !["get_connection_metadata", "get_foreign_keys", "get_indexes", "get_schemas"].includes(pending.request.method)) {
+        pending.context.auth = await resolveCliAuth(pending.context);
+        assertRequestActive(pending.context);
+      }
       result = response(pending.request, pending.context, await withRequestMetrics(pending.context, () => handler(handlerInput(pending.request), pending.context)));
     } catch (error) { result = failure(pending.request, pending.context, error); }
     finally {
@@ -138,6 +143,13 @@ export function createRpcRuntime(options: RuntimeOptions = {}): RpcRuntime {
       await shutdown;
     },
     async dispatch(request) {
+      if (request.method === "cancel" && !Object.hasOwn(request, "id")) {
+        const value = request.params;
+        if (jsonObject(value) && Object.keys(value).length === 1 && (typeof value.id === "string" || typeof value.id === "number")) {
+          for (const pending of registry.values()) if (pending.request.id === value.id) abort(pending, new DriverError("CANCELLED", "The host abandoned this request.", "not_applied"));
+        }
+        return undefined;
+      }
       if (!knownMethod(request.method)) return Object.hasOwn(request, "id") ? dispatchRpc(request) : undefined;
       if (request.method === "service_invalidate_auth" && !options.onInvalidate) return Object.hasOwn(request, "id") ? dispatchRpc(request) : undefined;
       if (!handlers[request.method as keyof typeof handlers] && request.method !== "cancel_request" && !(request.method === "service_invalidate_auth" && options.onInvalidate)) return Object.hasOwn(request, "id") ? dispatchRpc(request) : undefined;

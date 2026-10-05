@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import { usePluginAssets } from '@tabularis/plugin-api';
+import * as hostApi from '@tabularis/plugin-api';
+import css from './styles.css?inline';
 
 type StyleLink = { url: string; loaded(): void; failed(): void };
 
 export function PluginStyle({ pluginId }: { pluginId: string }) {
+  return typeof hostApi.usePluginAssets === 'function' ? <AssetStyle pluginId={pluginId} /> : <style>{css}</style>;
+}
+
+function AssetStyle({ pluginId }: { pluginId: string }) {
   const assets = usePluginAssets(pluginId);
   const [link, setLink] = useState<StyleLink | null>(null);
   const [failed, setFailed] = useState(false);

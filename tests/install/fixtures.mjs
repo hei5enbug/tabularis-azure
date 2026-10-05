@@ -12,11 +12,11 @@ export { pythonExecutable } from './platform-options.mjs';
 export const ACCEPTED_MANIFEST = {
   id: 'cosmos-nosql', name: 'cosmos-nosql', kind: 'driver', engine: 'cosmos-nosql', version: '0.1.0',
   description: 'Azure Cosmos DB NoSQL 문서 드라이버', executable: 'cosmos-nosql', connection_metadata: true,
-  service_protocol: 1, min_runtime_version: '0.26.1-spatial.1', paradigms: ['document'],
-  capabilities: { schemas: false, views: false, routines: false, file_based: false, identifier_quote: '"', alter_primary_key: false, manage_tables: false, explain: false, documents_v1: true, query_page_v1: true, cancel_v1: true, metadata_discovery: true },
-  data_types: [{ name: 'JSON', category: 'json' }], settings: [],
+  service_protocol: 1, min_runtime_version: '0.26.0', paradigms: ['document'],
+  capabilities: { schemas: false, views: false, routines: false, file_based: false, identifier_quote: '"', alter_primary_key: false, manage_tables: false, explain: false, documents_v1: true, query_page_v1: true, cancel_v1: true, metadata_discovery: true, readonly: false },
+  data_types: [{ name: 'JSON', category: 'json', requires_length: false, requires_precision: false, default_length: null }], settings: [],
   ui_assets: [{ path: 'ui/dist/style.css', mime: 'text/css' }],
-  ui_extensions: ['connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions', 'settings.plugin.actions'].map(slot => ({ slot, module: 'ui/dist/index.js', driver: 'cosmos-nosql' })),
+  ui_extensions: ['connection-modal.extra_fields', 'data-grid.toolbar.actions', 'row-edit-modal.footer.before', 'row-editor-sidebar.header.actions', 'settings.plugin.actions'].map(slot => ({ slot, module: 'ui/dist/index.js', ...(slot === 'settings.plugin.actions' ? {} : { driver: 'cosmos-nosql' }) })),
 };
 
 export function write(file, value) {

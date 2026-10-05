@@ -92,7 +92,7 @@ ZIP과 `.sha256` 파일이 발행되며 ZIP 내부 `release.json`에 파일별 �
 
 `.github/workflows/bootstrap.yml`은 push·pull request·수동 실행에서 동작하도록 등록했습니다.
 Ubuntu 24.04, Windows 2022, macOS 15 Intel에서 각 native x64를 검사합니다.
-이 문서를 작성할 때 GitHub CI는 아직 실행하지 않았습니다.
+실행 결과와 확인하지 않은 범위는 [검증 현황](verification.md)에 기록합니다.
 
 CI는 공식 Node archive 다섯 개를 SHA로 검증하고 archive extraction 검사를 모두 수행합니다.
 실제 bundled runtime 실행과 생산 ZIP smoke는 해당 runner의 native x64 하나만 수행합니다.

@@ -56,3 +56,28 @@ test('연결을 바꾼 뒤 도착한 이전 결과는 화면에 표시하지 않
   // then
   expect(screen.queryByText(/late-synthetic/)).toBeNull();
 });
+
+test('설정에서 연 작업 공간은 당시 활성 Cosmos 연결을 고정해 사용한다', async () => {
+  // given
+  fixture.query.mockResolvedValue({ columns: ['_document'], rows: [[{ id: 'settings-synthetic' }]] });
+  const view = render(<CompatWorkspace connectionId={null} />);
+  // when
+  fireEvent.click(screen.getByText('조회'));
+  // then
+  await waitFor(() => expect(screen.getByText(/settings-synthetic/)).toBeTruthy());
+  fixture.active = { connectionId: 'other', driver: 'cosmos-nosql' };
+  view.rerender(<CompatWorkspace connectionId={null} />);
+  fireEvent.click(screen.getByText('조회'));
+  expect(fixture.query).toHaveBeenCalledTimes(1);
+});
+
+test('유니코드 문서 샘플도 UTF-8 64 KiB를 넘지 않는다', async () => {
+  // given
+  fixture.query.mockResolvedValue({ columns: ['_document'], rows: [[{ text: '😀'.repeat(30_000) }]] });
+  const view = render(<CompatWorkspace connectionId="cosmos-1" />);
+  // when
+  fireEvent.click(screen.getByText('조회'));
+  // then
+  await waitFor(() => expect(view.container.querySelector('pre')).not.toBeNull());
+  expect(new TextEncoder().encode(view.container.querySelector('pre')!.textContent!).byteLength).toBeLessThanOrEqual(64 * 1024);
+});

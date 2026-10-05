@@ -120,8 +120,8 @@ macOS ARM64의 실제 Tabularis 0.26.0에 설치했다. 첫 앱 실행에서 JSO
 `requires_length`가 빠진 오류를 관찰해 `requires_precision`과 `default_length`를 포함한 호스트 타입 계약을 반영했다.
 metadata 응답과 패키징 검사에도 같은 필드를 적용하고 ZIP을 다시 생성했다.
 
-최종 ZIP은 50,410,858 bytes·9,123 files이며 SHA256은
-`27f1d5537a215b5dcc7f49b8e1c0d9df7aec1d9969a2bad2a34936ab25b40791`다.
+최종 ZIP은 50,410,924 bytes·9,123 files이며 SHA256은
+`32a0d2d7df7468d216aa278350ea6575e42fbef611f7f05b78d4d131bee7c853`다.
 설치 전에 ZIP과 내부 원장의 모든 파일 해시를 확인했다. 공식 MCP 프로세스의 initialize와 tools/list도 통과했다.
 이 검사는 실제 Azure DB 연결 성공을 의미하지 않는다.
 
@@ -136,3 +136,7 @@ SDK 문서 CRUD와 continuation은 공통 서비스가 있는 호스트에서만
 Plugin Center의 작업 슬롯은 targetPluginId로 구분하므로 해당 슬롯의 driver 필터를 제거했다. 후속 패키징 검사 59개가 통과했다.
 공식 앱에서 두 플러그인 활성화를 확인했고, 실제 설치된 Cosmos 실행 파일의 initialize·읽기 전용 metadata·shutdown 응답도 확인했다.
 이 metadata 검사는 합성 주소를 사용했으며 SDK 네트워크를 호출하지 않는다.
+
+공식 앱에서 Cosmos 작업 공간 모달의 실제 표시를 확인했다. 설정에서 연 작업 공간은 열 때 활성화된 Cosmos 연결을 고정해 사용한다.
+후속 UI 검사 6개와 build/typecheck가 통과했다. 유니코드 문서도 화면 샘플의 UTF-8 64 KiB 상한을 지킨다.
+이전 저장소 이름 변경 CI의 설정 필드 기대값 불일치도 이번 metadata 검사에 반영했다. 최신 원격 CI는 대기 중이다.

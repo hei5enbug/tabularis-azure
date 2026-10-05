@@ -25,6 +25,8 @@ export function CompatConnectionFields({ extra, setExtraField, setCredentialFiel
 
 export function CompatWorkspace({ connectionId }: { connectionId: string | null }) {
   const active = usePluginConnection();
+  const initialActiveConnection = useRef(active.driver === 'cosmos-nosql' ? active.connectionId : null);
+  const targetConnectionId = connectionId ?? initialActiveConnection.current;
   const { executeQuery, loading } = usePluginQuery();
   const [query, setQuery] = useState('SELECT * FROM c');
   const [result, setResult] = useState('');
@@ -33,20 +35,20 @@ export function CompatWorkspace({ connectionId }: { connectionId: string | null 
   const generation = useRef(0);
   const identity = useRef(active.connectionId);
   identity.current = active.connectionId;
-  useEffect(() => { generation.current++; setResult(''); return () => { generation.current++; }; }, [active.connectionId]);
-  const valid = !!connectionId && active.connectionId === connectionId && active.driver === 'cosmos-nosql';
+  useEffect(() => { generation.current++; setResult(''); return () => { generation.current++; }; }, [active.connectionId, targetConnectionId]);
+  const valid = !!targetConnectionId && active.connectionId === targetConnectionId && active.driver === 'cosmos-nosql';
   const run = async () => {
     if (!valid) { setError('이 작업 공간의 Cosmos 연결을 활성화하세요.'); return; }
     const current = ++generation.current;
     setError(''); setNotice(''); setResult('');
     try {
       const response = await executeQuery(query) as { columns: string[]; rows: unknown[][]; truncated?: boolean };
-      if (current !== generation.current || identity.current !== connectionId) return;
+      if (current !== generation.current || identity.current !== targetConnectionId) return;
       const sample = JSON.stringify(response.rows.slice(0, 20).map(row => row[0]), null, 2);
-      setResult(sample.slice(0, 64 * 1024));
+      setResult(new TextDecoder().decode(new TextEncoder().encode(sample).subarray(0, 64 * 1024), { stream: true }));
       setNotice(`${response.rows.length}개 조회 · 최대 20개 문서, 64 KiB를 화면에 표시합니다.${response.truncated ? ' 조회 상한에 도달했습니다(truncated).' : ''}`);
     } catch (failure) {
-      if (current === generation.current && identity.current === connectionId) setError(failure instanceof Error ? failure.message : 'Cosmos 조회에 실패했습니다.');
+      if (current === generation.current && identity.current === targetConnectionId) setError(failure instanceof Error ? failure.message : 'Cosmos 조회에 실패했습니다.');
     }
   };
   return <section className="cosmos-ui"><p>기본 조회 모드 · 연결에 저장한 데이터베이스와 기본 컨테이너를 읽습니다. 쿼리 내용은 그대로 전달합니다.</p><p>문서 수정, 페이지 재개, 앱 내 Entra 로그인은 공통 서비스를 제공하는 호스트에서 사용할 수 있습니다.</p><label>Cosmos SQL<textarea value={query} onChange={event => setQuery(event.target.value)} rows={5} spellCheck={false} /></label><button disabled={!valid || loading || !query.trim()} onClick={() => void run()}>조회</button>{!valid && <p role="status">이 작업 공간의 Cosmos 연결을 활성화하세요.</p>}{error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}{result && <pre>{result}</pre>}</section>;

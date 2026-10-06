@@ -47,7 +47,7 @@ DB scope는 host가 `https://cosmos.azure.com/.default`로 고정합니다.
 
 무인 호출의 보호된 credential 채널에는 host가 관리하는 credential 등록 경로를 사용합니다.
 MCP JSON에 비밀을 넣어 `credential.import`를 호출하는 방식은 허용하지 않습니다.
-Azure CLI의 실제 토큰 획득은 확인했습니다. 실제 데이터 작업과 전체 갱신 검증은 완료하지 않았습니다.
+Azure CLI의 실제 토큰 획득과 최소 읽기 쿼리는 확인했습니다. 문서 쓰기와 전체 갱신 검증은 미완료입니다.
 
 ## Azure CLI 로그인 사용하기
 
@@ -55,7 +55,9 @@ Microsoft Entra 사용자 인증에서 로그인 소스를 `Azure CLI (az login)
 개발 컴퓨터에서 먼저 `az login --tenant TENANT_ID`를 실행합니다.
 연결 설정에는 `auth_mode: "entra_user"`, `auth_source: "azure_cli"`와 테넌트 ID가 들어갑니다.
 클라이언트 ID는 공개 Azure CLI ID `04b07795-8ddb-461a-bbee-02f9e1bf7b46`로 고정됩니다.
-드라이버는 호스트가 전달한 토큰을 공식 Cosmos SDK에 전달하며 CLI를 직접 실행하지 않습니다.
+공통 서비스 호스트에서는 호스트가 CLI를 실행하고 transient 토큰을 드라이버에 전달합니다.
+공식 호스트의 기본 조회 경로에서는 드라이버가 CLI를 직접 실행해 토큰을 메모리로 받습니다.
+두 경로 모두 공식 Cosmos SDK를 사용하며 CLI의 원본 오류와 토큰을 출력하지 않습니다.
 
 Cosmos 데이터 접근 역할이 있어야 문서를 조회할 수 있습니다.
 리소스 관리 권한과 데이터 접근 권한은 별개입니다. 앱 로그아웃은 CLI 세션을 종료하지 않습니다.
@@ -108,8 +110,9 @@ SDK가 token을 제공하지 않으면 완료된 materialized 결과만 수용�
 
 ## 실제 Azure 수동 검사
 
-현재 실행은 사용자 지시에 따라 보류했습니다.
-이 명령은 전용 기존 DB·컨테이너에 fixture 문서를 쓰므로 동의 flag 두 개가 필요합니다.
+기존 CLI 로그인으로 수행한 최소 읽기 검사는 [검증 기록](verification.md#기존-cli-로그인의-읽기-전용-후속-검증)에 있습니다.
+아래 harness는 읽기 전용 검사 명령이 아닙니다. 전용 기존 DB·컨테이너에 fixture 문서를 쓰므로
+동의 flag 두 개가 필요합니다. 읽기 전용으로 한정한 이번 검증에서는 실행하지 않았습니다.
 컨테이너 이름은 `tabularis_test_`로 시작하며 기본·계층형 컨테이너가 서로 달라야 합니다.
 DB·컨테이너 생성·삭제, RU·index 정책 변경은 수행하지 않습니다.
 

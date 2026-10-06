@@ -14,7 +14,7 @@ const source = fileURLToPath(new URL('../../', import.meta.url));
 function fixture(t) { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tabularis-x1-c-ci-')); t.after(() => fs.rmSync(root, { recursive: true, force: true })); return root; }
 async function observe(action) { try { return { value: await action() }; } catch (error) { return { code: error.code ?? error.message }; } }
 
-test('CI YAML은 private sibling checkout 없이 고정된 세 native x64 runner를 사용한다', () => {
+test('CI는 수동 실행으로만 고정된 세 native x64 runner를 사용한다', () => {
   // given
   const host = createRequire(path.resolve(source, '../tabularis-host/package.json'));
   const parser = createRequire(host.resolve('eslint'))('js-yaml');
@@ -22,7 +22,7 @@ test('CI YAML은 private sibling checkout 없이 고정된 세 native x64 runner
   // when
   const actual = parser.load(yaml);
   // then
-  assert.deepEqual(Object.keys(actual.on).sort(), ['pull_request', 'push', 'workflow_dispatch']);
+  assert.deepEqual(Object.keys(actual.on), ['workflow_dispatch']);
   assert.deepEqual(actual.permissions, { contents: 'read' });
   assert.deepEqual(actual.jobs.native.strategy.matrix.os, ['ubuntu-24.04', 'windows-2022', 'macos-15-intel']);
   assert.equal(actual.jobs.native.steps.filter(step => step.uses?.startsWith('actions/checkout@')).length, 1);

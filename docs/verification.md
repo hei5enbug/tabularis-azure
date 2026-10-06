@@ -2,7 +2,7 @@
 
 이 기록은 실행한 검사와 아직 실행하지 않은 검사를 구분합니다.
 mock 통과는 실제 Azure 권한·TLS·Entra 동작의 증거가 아닙니다.
-실제 Azure 연결 확인을 우선합니다. 인증·네트워크 허용 전에는 실제 데이터 검증을 완료로 표시하지 않습니다.
+기존 CLI 로그인의 최소 읽기는 확인했습니다. 쓰기·페이지 재개·인증 갱신을 포함한 전체 검증은 미완료입니다.
 GitHub Actions는 수동 실행하는 선택 사항입니다. 실제 OS에서 직접 실행한 검증도 환경과 결과를 기록합니다.
 
 ## 관찰한 검사
@@ -41,7 +41,7 @@ Cosmos 설치 뒤 선언된 CSS asset도 host asset reader로 확인했습니다
 | 항목 | 현재 상태 |
 | --- | --- |
 | Linux arm64 native runtime | Docker ARM64에서 패키지 launcher와 동봉 Node 실행 확인. Linux 데스크톱 설치 UI는 미관찰 |
-| 실제 Azure account key·Entra 권한과 TLS | 인증·네트워크 허용 후 실행 필요 |
+| 실제 Azure account key·Entra 권한과 TLS | Azure CLI 사용자 인증·TLS·최소 읽기 확인. 계정 키·서비스 주체 인증은 미관찰 |
 | 실제 Entra interactive·refresh | 미관찰 |
 | 실제 Azure index policy | 관리자가 준비해야 하며 harness metadata에서 확인하지 못함 |
 | 실제 Azure native cross-process continuation | 수동 harness 코드 준비, 인증·네트워크 허용 후 실제 실행 필요 |
@@ -92,9 +92,9 @@ UI metadata 검사는 필드가 실제로 표시될 때까지 기다린다.
 | 계획 요구 사항 | 구현·검증 상태 |
 |---|---|
 | C-R01 | 5개 대상의 패키징·bundled Node 구현 완료. ARM/Rosetta/Intel macOS·Linux x64·Windows x64와 Docker Linux arm64 launcher 실행 확인. Linux 데스크톱 설치 UI는 미관찰 |
-| C-R02–C-R05 | 탐색·원본 JSON·문서 CRUD·페이지 코드와 unit/protocol/UI 검사 완료. 실제 Azure 권한 검증은 보류 |
+| C-R02–C-R05 | 탐색·원본 JSON·문서 CRUD·페이지 코드와 unit/protocol/UI 검사 완료. 실제 탐색·최소 읽기 확인, 문서 CRUD·페이지 수용 검사는 미완료 |
 | C-R06 | 교차 파티션 정렬·집계 구현과 synthetic 검사 완료. 실제 Azure 수용 검사는 보류 |
-| C-R07–C-R09 | RU·429·ETag·취소·인증 경계 구현과 synthetic 검사 완료. 실제 Azure 인증 검증은 보류 |
+| C-R07–C-R09 | RU·429·ETag·취소·인증 경계 구현과 synthetic 검사 완료. 실제 CLI 사용자 인증·TLS 확인, 다른 인증 모드·갱신·fault 검사는 미완료 |
 | C-R10 | 단일 공통 계약·Rust 서비스·GUI/MCP/CLI 어댑터 구현 완료. 실제 Cosmos transport 비교는 Azure 검증과 함께 보류 |
 
 
@@ -204,3 +204,56 @@ live 레지스트리 스키마 조회는 HTTP 403으로 실패했으므로 확�
 이번 수정은 README·빌드 안내·검증 기록과 Actions 실행 조건에 한정했다.
 워크플로는 `workflow_dispatch`만 사용하고 `contents: read`를 유지한다.
 YAML을 파싱해 수동 실행 조건을 확인했다. 제품 코드와 기존 검사 입력이 바뀌지 않아 전체 테스트는 반복하지 않았다.
+
+## 기존 CLI 로그인의 읽기 전용 후속 검증
+
+2026-10-06 commit `6929f05`에서 후속 검증을 시작했다.
+현재 CLI 세션의 개발용 NoSQL 계정만 데이터 요청 대상으로 선택했다.
+`az login`을 다시 실행하지 않았고 계정 키·인증서·refresh token은 조회하지 않았다.
+토큰은 메모리와 자식 프로세스에서만 사용했다. 실제 endpoint·계정·DB·사용자 식별자는 기록하지 않았다.
+
+| 범위 | 실행 경로 | 관찰 결과 |
+|---|---|---|
+| 로그인과 토큰 계약 | `az account show`, Cosmos scope의 `get-access-token`을 메모리로 처리 | audience·tenant·Azure CLI client·만료 여유 확인 |
+| 역할 경로 | Cosmos SQL 역할 배정·정의와 Graph `me/transitiveMemberOf`의 GET | 직접 배정은 없었지만 전이 그룹과 데이터 역할 배정의 일치 확인 |
+| 관리 메타데이터 | `az cosmosdb sql database list` | 성공. 데이터 접근 성공과 구분 |
+| 데이터 메타데이터 | TLS 검증을 유지한 AAD `GET /dbs` | HTTP 200. 이번 요청에서는 이전 방화벽 거부가 재현되지 않음 |
+| 드라이버의 실제 탐색 | `dist/index.js`의 줄 단위 JSON-RPC | `get_databases`·`test_connection`·`get_tables`·`get_columns` 성공 |
+| 드라이버의 최소 쿼리 | `execute_query`, `SELECT TOP 1 VALUE 1 FROM c`, limit 1 | 상수 값 1을 포함한 행 1개, `truncated: false` |
+| 프로세스 경계 | `initialize`·`shutdown`·응답 후 EOF | exit 0, stderr 0 bytes |
+
+드라이버 검사는 Node 24.21.0·pnpm 10.30.3·공식 Cosmos SDK 4.10.1을 사용했다.
+고정 source의 bootstrap과 core·UI 빌드를 수행한 뒤 공식 호스트의 기본 RPC 입력 경로를 호출했다.
+토큰은 드라이버가 `src/runtime/compat.ts`의 기존 CLI 경로에서 획득했다.
+그룹 배정 일치와 실제 요청 성공은 관찰했지만 모든 컨테이너의 유효 권한을 조사한 것은 아니다.
+이전 403의 원인이 바뀐 시점이나 관리자 변경 이력은 확인하지 않았다.
+
+원본 문서 내용은 출력하지 않았다. 리소스·역할·방화벽·index 정책과 DB·문서를 변경하지 않았다.
+`test:live`는 문서 생성·교체·삭제를 포함하므로 이번 읽기 전용 범위에서 실행하지 않았다.
+문서 CRUD·교차 파티션 정렬과 집계·native continuation·ETag·RU·429·GUI/CLI/MCP parity,
+앱 내 Entra 로그인·갱신과 서비스 주체·계정 키 인증은 여전히 미완료다.
+
+Azure SQL의 ODBC 성공과 SQL 플러그인 제한은
+[Spatial 후속 기록](https://github.com/hei5enbug/tabularis-spatial/blob/main/docs/verification.md#azure-sql의-읽기-전용-후속-검증)에 있다.
+
+## 후속 보안 검사와 가이드 확인
+
+공식 Tabularis main은 위의 `c0fe758325e955d5f364bf3150ea0822c6591469`와 같았다.
+최신 Plugin Guide·Building Plugins·연결 metadata 문서를 다시 확인했다.
+기본 RPC·UI 전역과 외부화·공식 슬롯·보호된 비밀 전달 계약은 유지한다.
+확장 capability와 수정 호스트 전용 기능을 공식 호스트의 지원 보장으로 표시하지 않는다.
+live 레지스트리 스키마 GET은 다시 HTTP 403으로 실패했다. 레지스트리 검증은 통과로 기록하지 않는다.
+
+root/UI 워크스페이스의 최초 `pnpm audit --json`은 공개 취약점 항목 8개를 보고했다.
+Vite 7.3.6·Vitest 4.1.11로 갱신하고 Vite의 esbuild를 지원 범위 안의 0.28.1로 고정했다.
+[Vite 권고](https://github.com/advisories/GHSA-fx2h-pf6j-xcff),
+[Vitest 권고](https://github.com/advisories/GHSA-82fw-gwwq-j7x9),
+[esbuild 권고](https://github.com/advisories/GHSA-g7r4-m6w7-qqqr)의 수정 범위를 확인했다.
+최종 audit는 exit 0, 모든 심각도에서 0건이다. UI 125개와 typecheck를 포함한 UI 빌드가 통과했다.
+bootstrap·CI 검사는 최초 26개 중 1개가 과거 push/PR 실행 조건을 기대해 실패했다.
+현재 수동 실행 workflow에 맞게 기대값을 수정한 뒤 26개 모두 통과했다. Actions 실행 조건은 바꾸지 않았다.
+SDK·runtime pin·고정 host snapshot은 변경하지 않았다. snapshot의 별도 워크스페이스는 이 audit에 포함하지 않는다.
+
+Gitleaks 8.30.1로 현재 추적 파일을 검사해 탐지 0건을 확인했다.
+기존 전체 Git 이력·공개 Actions 로그·산출물 검사 근거는 보존했다.
+비밀과 원본 인증 응답은 Git 파일에 추가하지 않았다. 새 ZIP의 실제 설치와 OS별 실행은 이번에 반복하지 않았다.

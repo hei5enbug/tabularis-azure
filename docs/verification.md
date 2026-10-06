@@ -38,7 +38,7 @@ Cosmos 설치 뒤 선언된 CSS asset도 host asset reader로 확인했습니다
 
 | 항목 | 현재 상태 |
 | --- | --- |
-| Linux arm64 native runtime | 실행하지 않음 |
+| Linux arm64 native runtime | Docker ARM64에서 패키지 launcher와 동봉 Node 실행 확인. Linux 데스크톱 설치 UI는 미관찰 |
 | 실제 Azure account key·Entra 권한과 TLS | 사용자 지시에 따라 실행 보류 |
 | 실제 Entra interactive·refresh | 미관찰 |
 | 실제 Azure index policy | 관리자가 준비해야 하며 harness metadata에서 확인하지 못함 |
@@ -89,7 +89,7 @@ UI metadata 검사는 필드가 실제로 표시될 때까지 기다린다.
 
 | 계획 요구 사항 | 구현·검증 상태 |
 |---|---|
-| C-R01 | 5개 대상의 패키징·bundled Node 구현 완료. ARM/Rosetta/Intel macOS·Linux x64·Windows x64 실행 확인. Linux arm64 native 실행은 미관찰 |
+| C-R01 | 5개 대상의 패키징·bundled Node 구현 완료. ARM/Rosetta/Intel macOS·Linux x64·Windows x64와 Docker Linux arm64 launcher 실행 확인. Linux 데스크톱 설치 UI는 미관찰 |
 | C-R02–C-R05 | 탐색·원본 JSON·문서 CRUD·페이지 코드와 unit/protocol/UI 검사 완료. 실제 Azure 권한 검증은 보류 |
 | C-R06 | 교차 파티션 정렬·집계 구현과 synthetic 검사 완료. 실제 Azure 수용 검사는 보류 |
 | C-R07–C-R09 | RU·429·ETag·취소·인증 경계 구현과 synthetic 검사 완료. 실제 Azure 인증 검증은 보류 |

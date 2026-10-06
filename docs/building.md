@@ -88,9 +88,10 @@ ZIP과 `.sha256` 파일이 발행되며 ZIP 내부 `release.json`에 파일별 �
 공식 host `0.26.0`부터 기본 읽기 전용 경로를 지원합니다.
 공통 서비스가 필요한 기능은 실제 host API 제공 여부를 확인해 활성화합니다.
 
-## native CI
+## 선택 사항인 native CI
 
-`.github/workflows/bootstrap.yml`은 push·pull request·수동 실행에서 동작하도록 등록했습니다.
+`.github/workflows/bootstrap.yml`은 GitHub Actions에서 필요할 때 수동으로 실행합니다.
+Actions 성공은 필수 완료 조건이 아닙니다. 실제 OS에서 같은 검증을 직접 실행할 수 있습니다.
 Ubuntu 24.04, Windows 2022, macOS 15 Intel에서 각 native x64를 검사합니다.
 실행 결과와 확인하지 않은 범위는 [검증 현황](verification.md)에 기록합니다.
 

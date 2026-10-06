@@ -31,7 +31,7 @@ bootstrap은 고정된 host 빌드 입력을 sibling `tabularis-host`에 준비�
 | --- | --- |
 | macOS arm64 | 생산 ZIP의 실제 native 설치와 bundled Node 실행 확인 |
 | macOS x64 | 실제 Rosetta 실행과 Intel native CI의 ZIP/runtime 실행 확인 |
-| Linux arm64 | archive 검증만 확인, native 실행 미확인 |
+| Linux arm64 | Docker ARM64에서 패키지 launcher와 동봉 Node 실행 확인 |
 | Linux x64 | Ubuntu native CI의 ZIP/runtime 실행 확인 |
 | Windows x64 | Windows 2022 native CI의 ZIP/runtime 실행 확인 |
 
@@ -61,6 +61,9 @@ Cosmos 작업 공간에서 저장된 연결을 명시적으로 선택한 뒤 데
 
 인증, 읽기 전용, continuation과 결과 불명 처리 방법은 [사용 안내](docs/usage.md#안전하게-문서-편집하기)에 있습니다.
 실제 Azure CLI 토큰 획득은 확인했습니다. 실제 DB 접근과 전체 Azure 검증은 아직 완료하지 않았습니다.
+실제 Azure 연결 확인은 인증·네트워크 문제가 해결된 뒤 우선 진행합니다.
+GitHub Actions는 필요할 때 수동으로 실행하는 선택 사항이며 필수 완료 조건이 아닙니다.
+실제 OS에서 직접 수행한 검증도 실행 환경과 결과를 기록하면 근거로 사용합니다.
 mock 검사, 실제 설치, OS별 CI를 나눈 기록은 [검증 기록](docs/verification.md#관찰한-검사)를 참고하세요.
 
 ## 라이선스

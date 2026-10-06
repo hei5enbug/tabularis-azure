@@ -2,6 +2,8 @@
 
 이 기록은 실행한 검사와 아직 실행하지 않은 검사를 구분합니다.
 mock 통과는 실제 Azure 권한·TLS·Entra 동작의 증거가 아닙니다.
+실제 Azure 연결 확인을 우선합니다. 인증·네트워크 허용 전에는 실제 데이터 검증을 완료로 표시하지 않습니다.
+GitHub Actions는 수동 실행하는 선택 사항입니다. 실제 OS에서 직접 실행한 검증도 환경과 결과를 기록합니다.
 
 ## 관찰한 검사
 
@@ -39,10 +41,10 @@ Cosmos 설치 뒤 선언된 CSS asset도 host asset reader로 확인했습니다
 | 항목 | 현재 상태 |
 | --- | --- |
 | Linux arm64 native runtime | Docker ARM64에서 패키지 launcher와 동봉 Node 실행 확인. Linux 데스크톱 설치 UI는 미관찰 |
-| 실제 Azure account key·Entra 권한과 TLS | 사용자 지시에 따라 실행 보류 |
+| 실제 Azure account key·Entra 권한과 TLS | 인증·네트워크 허용 후 실행 필요 |
 | 실제 Entra interactive·refresh | 미관찰 |
 | 실제 Azure index policy | 관리자가 준비해야 하며 harness metadata에서 확인하지 못함 |
-| 실제 Azure native cross-process continuation | 수동 harness 코드 준비, 실제 실행 보류 |
+| 실제 Azure native cross-process continuation | 수동 harness 코드 준비, 인증·네트워크 허용 후 실제 실행 필요 |
 | Cosmos 실제 Azure를 포함한 GUI·CLI·MCP parity | 공통 어댑터는 실제 PostGIS로 확인, Cosmos의 실제 Azure 실행은 보류 |
 | Windows 수동 live harness owner ACL | 구현·합성 검사 완료, 실제 Windows PowerShell 실행은 미관찰 |
 
@@ -171,3 +173,34 @@ PATH에 Node가 없는 상태로 initialize·합성 연결 metadata·shutdown을
 
 커밋 대상의 추적 파일과 신규 파일을 Gitleaks 8.30.1로 검사해 탐지 0건을 확인했다.
 Git 이력 검사도 탐지 0건이었다. 패키지·검사 보고서·실제 인증정보는 Git에 추가하지 않는다.
+
+## 공개 전 보안 검사와 최신 공식 가이드 대조
+
+2026-10-06 공개 대상 Git 파일과 전체 Git 이력을 다시 검사해 실제 비밀 값 탐지 0건을 확인했다.
+원격에는 main 한 개만 있으며 태그·issue·PR·release는 없었다.
+추적된 환경 파일·개인 키·자격 증명 파일도 없었다.
+GitHub Actions 산출물 9개와 다운로드 가능한 실행 로그의 텍스트 및 ZIP 안의 텍스트도 검사했다.
+공개 콘텐츠에서 실제 비밀 값을 발견하지 않았다. 로그가 없는 이전 실행 한 개는 job도 없었다.
+원본 검사 보고서는 저장소 밖에 보관한다.
+
+최신 공식 문서는 Tabularis main
+[`c0fe758325e955d5f364bf3150ea0822c6591469`](https://github.com/TabularisDB/tabularis/tree/c0fe758325e955d5f364bf3150ea0822c6591469) 기준이다.
+[Building Plugins](https://tabularis.dev/wiki/building-plugins),
+[Plugin Guide](https://github.com/TabularisDB/tabularis/blob/c0fe758325e955d5f364bf3150ea0822c6591469/plugins/PLUGIN_GUIDE.md),
+연결 metadata 문서·튜토리얼과 공식 SQL Server 플러그인 README를 대조했다.
+
+| 확인 항목 | 결과 |
+|---|---|
+| 패키지·최소 버전 | 패키저가 `.tabularium`과 OS별 실행 파일을 생성한다. 기본 최소 버전은 0.26.0이며 실제 공식 앱 설치를 확인했다. |
+| 기본 RPC | JSON-RPC 2.0을 줄 단위로 읽고 응답한다. initialize·EOF·표준 취소 알림을 처리하고 취소 알림에는 응답하지 않는다. 실행 중에도 stdin을 계속 읽는다. |
+| 연결·비밀 | 공식 `params.params` 입력과 connection metadata 계약을 사용한다. `extra`의 비밀 필드는 거부한다. 기본 계정 키는 호스트 비밀번호 경로를, 전체 기능의 비밀은 transient 인증 전달을 사용한다. 원본 SDK 오류와 로그는 노출하지 않는다. |
+| UI 번들·슬롯 | IIFE 전역·default export·React/JSX/plugin API 외부화를 사용한다. 선언한 다섯 슬롯은 공식 목록에 있으며 같은 module을 재사용할 수 있다. Tauri를 직접 import하거나 호출하지 않는다. |
+| 기본 기능과 확장 기능 | 공식 호스트는 읽기 전용 기본 경로를 제공한다. `service_protocol`과 문서·페이지 capability는 수정 호스트 전용이며 실제 서비스 API 제공 여부로 전체 기능을 선택한다. |
+
+로케일 파일과 `defineSlot`은 선택 사항이다. 현재의 legacy slot props 형식은 가이드에서 계속 지원한다.
+live 레지스트리 스키마 조회는 HTTP 403으로 실패했으므로 확장 매니페스트 필드의 레지스트리 수용 여부는
+확인하지 못했다. 공식 앱의 직접 설치 결과와 레지스트리 승인을 구분한다.
+
+이번 수정은 README·빌드 안내·검증 기록과 Actions 실행 조건에 한정했다.
+워크플로는 `workflow_dispatch`만 사용하고 `contents: read`를 유지한다.
+YAML을 파싱해 수동 실행 조건을 확인했다. 제품 코드와 기존 검사 입력이 바뀌지 않아 전체 테스트는 반복하지 않았다.

@@ -257,3 +257,27 @@ SDK·runtime pin·고정 host snapshot은 변경하지 않았다. snapshot의 �
 Gitleaks 8.30.1로 현재 추적 파일을 검사해 탐지 0건을 확인했다.
 기존 전체 Git 이력·공개 Actions 로그·산출물 검사 근거는 보존했다.
 비밀과 원본 인증 응답은 Git 파일에 추가하지 않았다. 새 ZIP의 실제 설치와 OS별 실행은 이번에 반복하지 않았다.
+
+## macOS 로컬 앱에 최신 패키지 반영
+
+2026-10-06 공식 macOS ARM64 앱 0.26.0에 commit `6598487`의 Cosmos 패키지를 설치했다.
+Rust 1.96.0으로 release launcher를 만들고 고정 Node 24.21.0 archive를 사용했다.
+ZIP은 50,411,031 bytes·9,123 files이며 SHA256은
+`a661dea0565bd78443e707ae808a191b858641a107b21176f81fc67026d67446`다.
+ZIP과 실제 `plugins/drivers/cosmos-nosql/` 설치본의 모든 파일 해시를 확인했다.
+
+ARM64 production 검사는 최초 실행에서 이전 최소 호스트 버전 기대값 때문에 실패했다.
+검사 기대값을 공식 기본 호스트 0.26.0과 driver 필터가 없는 설정 슬롯 계약에 맞췄다.
+재실행한 ARM64 production 검사 1개가 통과했고 결과 ZIP의 SHA가 설치 ZIP과 일치했다.
+Rosetta와 다른 OS의 production 검사는 이번 설치에서 실행하지 않았다.
+
+설치한 동봉 런타임은 빈 PATH와 환경 변수 poisoning 8개에서 initialize·합성 읽기 전용 metadata·shutdown을
+실행했다. 응답 3개, exit 0, stderr 0 bytes와 Node 24.21.0을 확인했다.
+실제 GUI가 설치한 Cosmos 런타임을 자식 프로세스로 실행하는 것도 확인했다.
+새 공식 MCP 프로세스의 initialize·tools/list는 성공했고 플러그인 로딩 오류는 없었다.
+기존 앱·설정은 private 디렉터리에 백업했고 설치 직후 설정 바이트가 유지되는 것을 확인했다.
+
+화면 자동 조작은 macOS 접근성 권한 거부 `-25211`로 실행하지 못했다.
+이번 설치 검사에서 실제 Azure 데이터 요청과 문서 쓰기는 실행하지 않았다.
+공식 호스트의 기본 읽기 경로와 수정 호스트 전용 문서 CRUD·continuation의 지원 구분은 그대로다.
+이미 실행 중인 이전 MCP 프로세스에는 클라이언트의 재연결이 필요하다.

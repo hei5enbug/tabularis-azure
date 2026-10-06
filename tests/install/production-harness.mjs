@@ -121,7 +121,7 @@ with zipfile.ZipFile(bundle) as archive:
     ledger={item['path']:item for item in release['files']}
     assert len(ledger)==len(release['files']) and set(ledger)==set(names)-{'release.json'}
     assert release['node']=='24.21.0' and release['sdk']=='4.10.1'
-    assert release['service_protocol']==1 and release['min_runtime_version']=='0.26.1-spatial.1'
+    assert release['service_protocol']==1 and release['min_runtime_version']=='0.26.0'
     assert release['platform']==platform and release['arch']==arch and release['runtime_archive_sha256']==pin
     total=0
     for entry in entries:
@@ -135,12 +135,12 @@ with zipfile.ZipFile(bundle) as archive:
         if name in ledger:
             assert ledger[name]['bytes']==len(data) and ledger[name]['sha256']==hashlib.sha256(data).hexdigest()
     manifest=json.loads(archive.read('.tabularium'))
-    assert manifest['version']=='0.1.0' and manifest['min_runtime_version']=='0.26.1-spatial.1' and manifest['service_protocol']==1
+    assert manifest['version']=='0.1.0' and manifest['min_runtime_version']=='0.26.0' and manifest['service_protocol']==1
     executable='cosmos-nosql.exe' if platform=='win32' else 'cosmos-nosql'
     runtime='runtime/node.exe' if platform=='win32' else 'runtime/bin/node'
     assert manifest['executable']==executable and manifest['paradigms']==['document']
     assert executable in names and runtime in names
-    assert len(manifest['ui_extensions'])==5 and all(item['driver']=='cosmos-nosql' and item['module']=='ui/dist/index.js' for item in manifest['ui_extensions'])
+    assert len(manifest['ui_extensions'])==5 and all(item['module']=='ui/dist/index.js' and ('driver' not in item if item['slot']=='settings.plugin.actions' else item.get('driver')=='cosmos-nosql') for item in manifest['ui_extensions'])
     assert {item['slot'] for item in manifest['ui_extensions']}=={'connection-modal.extra_fields','data-grid.toolbar.actions','row-edit-modal.footer.before','row-editor-sidebar.header.actions','settings.plugin.actions'}
     assert all(manifest['capabilities'][key] is True for key in ('documents_v1','query_page_v1','cancel_v1','metadata_discovery'))
     assert len(archive.read('ui/dist/index.js'))>0 and len(archive.read('ui/dist/style.css'))>0

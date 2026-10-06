@@ -55,12 +55,12 @@ test('0.26 메타데이터 조회는 인증값 없이 읽기 전용 기능을 �
   assert.equal(fixture.calls.length, 0);
 });
 
-test('Azure CLI 토큰은 지정한 Cosmos 범위와 테넌트 및 만료를 확인한다', async () => {
+test('Azure CLI 토큰은 Cosmos 범위를 요청하고 Cosmos GUID audience도 허용한다', async () => {
   // given
   const tenant = '00000000-0000-0000-0000-000000000001';
   const client = '04b07795-8ddb-461a-bbee-02f9e1bf7b46';
   const now = () => 1000000;
-  const claims = { tid: tenant, appid: client, oid: 'synthetic-principal', aud: 'https://cosmos.azure.com', exp: 2000 };
+  const claims = { ver: '2.0', tid: tenant, appid: client, oid: 'synthetic-principal', aud: 'a232010e-820c-4083-83bb-3ace5fc29d0b', exp: 2000 };
   const token = `synthetic.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.signature`;
   const context = resolveLegacyContext({ ...request('test_connection'), params: { params: { ...connection, extra: { ...connection.extra, auth_mode: 'entra_user', auth_source: 'azure_cli', tenant_id: tenant, client_id: client } } } });
   let args;
@@ -71,6 +71,18 @@ test('Azure CLI 토큰은 지정한 Cosmos 범위와 테넌트 및 만료를 확
   assert.equal(auth.scope, 'https://cosmos.azure.com/.default');
   assert.equal(args[args.indexOf('--tenant') + 1], tenant);
   assert.ok(!args.includes(token));
+});
+
+test('Azure CLI가 다른 서비스의 토큰을 반환하면 Cosmos 인증을 거부한다', async () => {
+  // given
+  const tenant = '00000000-0000-0000-0000-000000000001';
+  const claims = { tid: tenant, appid: '04b07795-8ddb-461a-bbee-02f9e1bf7b46', oid: 'synthetic-principal', aud: 'https://database.windows.net', exp: 2000 };
+  const token = `synthetic.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.signature`;
+  const context = resolveLegacyContext({ ...request('test_connection'), params: { params: { ...connection, extra: { ...connection.extra, auth_mode: 'entra_user', auth_source: 'azure_cli', tenant_id: tenant, client_id: claims.appid } } } });
+  // when
+  const action = resolveCliAuth(context, async () => JSON.stringify({ accessToken: token }), () => 1000000);
+  // then
+  await assert.rejects(action, { code: 'AUTH_REQUIRED' });
 });
 
 test('호스트 cancel 알림은 요청을 중단하고 별도 응답을 보내지 않는다', async () => {

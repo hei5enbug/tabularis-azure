@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { validateEndpoint } from '../../dist/connection/settings.js';
+import { assertOwnerAcl } from './windows-acl.mjs';
 
 export class LiveError extends Error {
   constructor(code, outcome = 'not_applied') { super(code); this.code = code; this.outcome = outcome; }
@@ -33,6 +34,7 @@ export function privateFile(file, maxBytes = 64 * 1024) {
   absoluteFile(file, 'INVALID_CONFIG');
   let descriptor;
   try {
+    assertOwnerAcl(file);
     const before = fs.lstatSync(file);
     if (!before.isFile() || before.isSymbolicLink() || !Number.isSafeInteger(before.size) || before.size > maxBytes
       || (process.platform !== 'win32' && ((before.mode & 0o077) !== 0 || before.uid !== process.getuid()))) reject();
@@ -48,6 +50,7 @@ export function privateFile(file, maxBytes = 64 * 1024) {
     }
     const after = fs.lstatSync(file);
     if (count !== stat.size || after.isSymbolicLink() || after.ino !== stat.ino || after.dev !== stat.dev || fs.fstatSync(descriptor).size !== stat.size) reject();
+    assertOwnerAcl(file);
     return bytes.subarray(0, count);
   } catch { reject(); } finally { if (descriptor !== undefined) fs.closeSync(descriptor); }
 }

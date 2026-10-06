@@ -44,7 +44,7 @@ Cosmos 설치 뒤 선언된 CSS asset도 host asset reader로 확인했습니다
 | 실제 Azure index policy | 관리자가 준비해야 하며 harness metadata에서 확인하지 못함 |
 | 실제 Azure native cross-process continuation | 수동 harness 코드 준비, 실제 실행 보류 |
 | Cosmos 실제 Azure를 포함한 GUI·CLI·MCP parity | 공통 어댑터는 실제 PostGIS로 확인, Cosmos의 실제 Azure 실행은 보류 |
-| Windows 수동 live harness owner ACL | 미구현으로 명시적 거부 |
+| Windows 수동 live harness owner ACL | 구현·합성 검사 완료, 실제 Windows PowerShell 실행은 미관찰 |
 
 CI의 production smoke는 ZIP을 임시 fixture 경로에 extraction한 뒤 bundled launcher를 실행합니다.
 이를 native host installer 실행으로 기록하지 않습니다.
@@ -105,7 +105,9 @@ Cosmos 드라이버는 호스트의 transient Entra context를 기존 공식 SDK
 
 개발용 Azure 계정에서 읽기 전용 데이터베이스 메타데이터 조회는 HTTP 403으로 실패했다.
 현재 사용자에게 직접 배정된 데이터 역할이 없었고 계정에는 IP 허용 목록이 있었다.
-전체 데이터 접근 권한과 네트워크 확인이 남아 있다. 역할과 방화벽은 변경하지 않았다.
+후속 읽기 전용 응답에서는 IP 방화벽에 따른 `network_access` 거부를 확인했다.
+그룹을 통한 데이터 역할 적용 여부는 확인하지 못했으므로 읽기 권한이 없다고 단정하지 않는다.
+네트워크 허용과 유효 데이터 권한 확인이 남아 있다. 역할과 방화벽은 변경하지 않았다.
 계정 키는 조회하지 않았으며 실제 DB·문서의 생성·수정·삭제도 실행하지 않았다.
 토큰·사용자 식별자·테넌트·구독·실제 리소스 설정은 Git 파일에 남기지 않았다.
 이 확인은 교차 파티션 정렬·집계·페이지 재개·ETag·RU·429 수용 검사의 완료를 의미하지 않는다.
@@ -139,4 +141,33 @@ Plugin Center의 작업 슬롯은 targetPluginId로 구분하므로 해당 슬�
 
 공식 앱에서 Cosmos 작업 공간 모달의 실제 표시를 확인했다. 설정에서 연 작업 공간은 열 때 활성화된 Cosmos 연결을 고정해 사용한다.
 후속 UI 검사 6개와 build/typecheck가 통과했다. 유니코드 문서도 화면 샘플의 UTF-8 64 KiB 상한을 지킨다.
-이전 저장소 이름 변경 CI의 설정 필드 기대값 불일치도 이번 metadata 검사에 반영했다. 최신 원격 CI는 대기 중이다.
+이전 저장소 이름 변경 CI의 설정 필드 기대값 불일치도 이번 metadata 검사에 반영했다.
+
+## 후속 로컬 보완과 설치
+
+공식 호스트의 Azure CLI 인증에서 Cosmos URL과 공식 Cosmos GUID audience를 모두 허용하도록 수정했다.
+다른 서비스 audience와 잘못된 사용자·테넌트·만료 정보는 계속 거부한다.
+core build와 해당 호환 검사 7개가 통과했다. 실제 Azure 데이터 조회를 반복하지 않았다.
+
+Windows 수동 harness의 소유자·ACL 검사를 구현했다. 관련 합성 검사 38개가 통과했다.
+설정 파일은 읽기 전후, report 임시 파일은 쓰기 전, 부모 디렉터리는 게시 전에 다시 검사한다.
+현재 Mac의 합성 통과를 실제 Windows ACL 검증으로 기록하지 않는다.
+
+후속 macOS ARM64 ZIP은 50,410,975 bytes·9,123 files이며 SHA256은
+`fe6a6eb449c1ca5a4bbdc147561d29445a7ea5092b7eeb771898eb03aff8d58f`다.
+내부 원장의 모든 파일 해시를 확인했다. bundled launcher의 initialize·연결 metadata·shutdown도 통과했다.
+실제 공식 macOS ARM64 앱의 기존 설치를 이 ZIP으로 교체하고 활성화했다.
+
+Linux ARM64 ZIP은 55,582,123 bytes·9,123 files이며 SHA256은
+`aecd0d2e7a2dd52ef5124008fff1c7ac288a8fd61624ccbeeb609508830f4367`이다.
+내부 원장의 모든 파일 해시를 확인했다. ARM64 Docker Linux에서 외부 네트워크를 끄고
+PATH에 Node가 없는 상태로 initialize·합성 연결 metadata·shutdown을 실행했다.
+응답 3개·exit 0·stderr 0 bytes·읽기 전용 metadata를 확인했다.
+동봉 Node는 고정한 24.21.0이며 launcher는 캐시된 Rust 1.98.1로 빌드했다.
+이 결과는 고정한 Rust 1.96.0의 CI 빌드나 Linux 데스크톱 UI 검사 통과를 의미하지 않는다.
+
+[원격 실행 37370993970](https://github.com/hei5enbug/tabularis-azure/actions/runs/37370993970)의
+실패 job은 계정 결제·사용 한도 때문에 시작되지 않았다. 이 실패를 코드 검사 실패로 기록하지 않는다.
+
+커밋 대상의 추적 파일과 신규 파일을 Gitleaks 8.30.1로 검사해 탐지 0건을 확인했다.
+Git 이력 검사도 탐지 0건이었다. 패키지·검사 보고서·실제 인증정보는 Git에 추가하지 않는다.

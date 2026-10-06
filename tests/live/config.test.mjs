@@ -105,19 +105,57 @@ test('설정 검증 실패는 두 credential FD 모두 읽기 전에 종료한�
   assert.equal(outputs[0].code, 'INVALID_CONFIG');
 });
 
-test('Windows CLI는 ACL 소유권 검증 전까지 설정과 credential을 읽지 않는다', async () => {
+test('Windows ACL 허용은 설정 검증 뒤 credential과 시나리오 실행을 허용한다', async () => {
   // given
-  let reads = 0; let starts = 0; const outputs = [];
+  const credentials = auth(); const events = []; const outputs = [];
   const args = ['--config', '/synthetic/config', '--credential-fd', '3', '--readonly-credential-fd', '4', '--allow-live', '--allow-fixture-writes'];
   // when
-  const code = await main(args, { platform: 'win32', configReader: () => { reads += 1; }, credentialReader: () => { reads += 1; }, scenario: () => { starts += 1; }, output: value => outputs.push(value), noSignals: true });
+  const code = await main(args, {
+    platform: 'win32',
+    ownerAclChecker: () => events.push('acl'),
+    configReader: () => { events.push('config'); return CONFIG; },
+    credentialReader: fd => { events.push('credential'); return fd === 3 ? credentials.owner : credentials.readonly; },
+    scenario: async () => { events.push('scenario'); return { report: { evidence_kind: 'synthetic_harness' }, exitCode: 0 }; },
+    output: result => outputs.push(result),
+    noSignals: true,
+  });
   // then
-  assert.equal(code, 2);
-  assert.equal(reads, 0);
-  assert.equal(starts, 0);
-  assert.equal(outputs[0].code, 'UNSUPPORTED_PLATFORM');
-  assert.deepEqual(outputs[0].deferred, ['windows_manual_harness_owner_acl']);
+  assert.equal(code, 0);
+  assert.deepEqual(events, ['acl', 'config', 'credential', 'credential', 'scenario']);
+  assert.deepEqual(outputs, [{ evidence_kind: 'synthetic_harness' }]);
+  assert.equal(credentials.owner.account_key, '');
+  assert.equal(credentials.readonly.account_key, '');
 });
+
+for (const [title, deniedTarget] of [
+  ['설정 파일', 'config'],
+  ['보고서 디렉터리', 'report'],
+]) {
+  test(`Windows ${title} ACL 거부는 설정, credential, 시나리오를 시작하지 않는다`, async t => {
+    // given
+    const value = privateFixture(t); let configReads = 0; let credentialReads = 0; let starts = 0; const outputs = [];
+    const report = path.join(value.root, 'report.json');
+    const denied = deniedTarget === 'config' ? value.config : value.root;
+    const args = ['--config', value.config, '--credential-fd', '3', '--readonly-credential-fd', '4', '--allow-live', '--allow-fixture-writes', ...(deniedTarget === 'report' ? ['--report', report] : [])];
+    // when
+    const code = await main(args, {
+      platform: 'win32',
+      ownerAclChecker: target => { if (target === denied) throw new Error(SECRET); },
+      configReader: () => { configReads += 1; return CONFIG; },
+      credentialReader: () => { credentialReads += 1; return auth().owner; },
+      scenario: () => { starts += 1; },
+      output: result => outputs.push(result),
+      noSignals: true,
+    });
+    // then
+    assert.equal(code, 2);
+    assert.equal(configReads, 0);
+    assert.equal(credentialReads, 0);
+    assert.equal(starts, 0);
+    assert.equal(outputs[0].code, deniedTarget === 'config' ? 'INVALID_CONFIG' : 'INVALID_REPORT_PATH');
+    assert.ok(!JSON.stringify(outputs).includes(SECRET));
+  });
+}
 
 async function reportTwice(file) {
   writeReport(file, { evidence_kind: 'synthetic_harness', count: 37 });

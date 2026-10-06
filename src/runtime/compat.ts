@@ -10,6 +10,7 @@ import { jsonObject } from "./validation.js";
 
 const legacyMethods = new Set(["ping", "test_connection", "get_databases", "get_tables", "get_columns", "get_connection_metadata", "get_foreign_keys", "get_indexes", "get_schemas", "execute_query"]);
 const CLI_CLIENT_ID = "04b07795-8ddb-461a-bbee-02f9e1bf7b46";
+const COSMOS_AUDIENCES = new Set(["https://cosmos.azure.com", "https://cosmos.azure.com/", "a232010e-820c-4083-83bb-3ace5fc29d0b"]);
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
 export function resolveLegacyContext(request: RpcRequest): ResolvedContext {
@@ -69,6 +70,6 @@ export async function resolveCliAuth(context: ResolvedContext, run = runAzureCli
   const tenant = claims.tid;
   const client = claims.azp ?? claims.appid;
   const principal = claims.oid;
-  if (!["https://cosmos.azure.com", "https://cosmos.azure.com/"].includes(String(claims.aud)) || tenant !== settings.tenant_id || client !== CLI_CLIENT_ID || typeof principal !== "string" || !principal || !Number.isSafeInteger(expires) || expires <= now() + 330_000) throw new DriverError("AUTH_REQUIRED", "The Azure CLI token identity, audience, or expiry does not match this connection. Run az login again.");
+  if (!COSMOS_AUDIENCES.has(String(claims.aud)) || tenant !== settings.tenant_id || client !== CLI_CLIENT_ID || typeof principal !== "string" || !principal || !Number.isSafeInteger(expires) || expires <= now() + 330_000) throw new DriverError("AUTH_REQUIRED", "The Azure CLI token identity, audience, or expiry does not match this connection. Run az login again.");
   return { kind: "entra_token", access_token: token.accessToken as string, expires_at_ms: expires, tenant_id: tenant, client_id: CLI_CLIENT_ID, principal_id: principal, scope: COSMOS_SCOPE, identity: hash(JSON.stringify([tenant, client, principal, COSMOS_SCOPE])) };
 }

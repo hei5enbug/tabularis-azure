@@ -141,7 +141,9 @@ FD 3에는 fixture 쓰기가 가능한 인증을, FD 4에는 실제 읽기 전�
 credential 값은 argv·stdin·환경 변수로 전달하지 않습니다.
 설정에는 version·전용 리소스 확인·endpoint·database·두 container·auth mode와 필요한 tenant/client ID만 둡니다.
 report 부모는 기존의 private 소유 디렉터리여야 하며 기존 report를 덮어쓰지 않습니다.
-현재 Windows 수동 harness는 owner ACL 검증이 없어 credential을 읽기 전에 명시적으로 거부합니다.
+Windows에서는 기본 PowerShell로 설정 파일과 report 디렉터리의 ACL을 credential 읽기 전에 검사합니다.
+소유자는 현재 사용자여야 하며, 접근을 허용하는 항목은 현재 사용자·SYSTEM·Administrators만 허용합니다.
+상속된 접근 권한도 검사합니다. 권한을 확인하지 못하면 실행을 거부합니다.
 
 harness는 자신의 run UUID로 표시한 문서만 확인하고 정리합니다.
 native cross-process resume을 관찰하지 못하거나 cleanup 결과가 불명확하면 exit 4로 끝납니다.

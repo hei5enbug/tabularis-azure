@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import yamlParser from 'js-yaml';
 import { archiveName, ensureArchive } from '../../scripts/ci/runtime.mjs';
 import { prepareCI, prepareInputs } from '../../scripts/ci/prepare.mjs';
 import { collectArtifacts } from '../../scripts/ci/collect.mjs';
@@ -16,11 +16,9 @@ async function observe(action) { try { return { value: await action() }; } catch
 
 test('CI는 수동 실행으로만 고정된 세 native x64 runner를 사용한다', () => {
   // given
-  const host = createRequire(path.resolve(source, '../tabularis-host/package.json'));
-  const parser = createRequire(host.resolve('eslint'))('js-yaml');
   const yaml = fs.readFileSync(path.join(source, '.github/workflows/bootstrap.yml'), 'utf8');
   // when
-  const actual = parser.load(yaml);
+  const actual = yamlParser.load(yaml);
   // then
   assert.deepEqual(Object.keys(actual.on), ['workflow_dispatch']);
   assert.deepEqual(actual.permissions, { contents: 'read' });
@@ -32,16 +30,39 @@ test('CI는 수동 실행으로만 고정된 세 native x64 runner를 사용한�
   assert.equal(yaml.includes('test:live'), false);
   assert.ok(yaml.includes('pnpm test:install'));
 });
-test('package scripts는 독립 bootstrap과 전용 검사를 연결하며 live 동의 진입점을 유지한다', () => {
+test('package scripts는 SDK workspace 빌드와 검사를 연결하고 live 진입점을 유지한다', () => {
   // given
-  const metadata = fs.readFileSync(path.join(source, 'package.json'), 'utf8');
+  const metadata = JSON.parse(fs.readFileSync(path.join(source, 'package.json'), 'utf8'));
+  const ui = JSON.parse(fs.readFileSync(path.join(source, 'ui/package.json'), 'utf8'));
   // when
-  const actual = JSON.parse(metadata);
+  const actual = {
+    bootstrap: metadata.scripts.bootstrap,
+    verifySdk: metadata.scripts['verify:sdk'],
+    buildSdk: metadata.scripts['build:sdk'],
+    buildDriver: metadata.scripts['build:driver'],
+    testSdk: metadata.scripts['test:sdk'],
+    testBootstrap: metadata.scripts['test:bootstrap'],
+    testLive: metadata.scripts['test:live'],
+    serviceContracts: metadata.dependencies['@tabularis/service-contracts'],
+    uiPluginApi: ui.devDependencies['@tabularis/plugin-api'],
+    uiServiceContracts: ui.devDependencies['@tabularis/service-contracts'],
+    yamlPin: metadata.devDependencies['js-yaml'],
+  };
   // then
-  assert.equal(actual.scripts.bootstrap, 'node scripts/bootstrap/cli.mjs');
-  assert.equal(actual.scripts['test:bootstrap'], 'node --test tests/bootstrap/*.test.mjs tests/ci/*.test.mjs');
-  assert.equal(actual.scripts['test:live'], 'node scripts/live/cli.mjs');
-  assert.equal(actual.dependencies['@azure/cosmos'], '4.10.1');
+  assert.equal(actual.bootstrap, 'node scripts/bootstrap/cli.mjs');
+  assert.equal(actual.verifySdk, 'node scripts/sdk.mjs');
+  assert.match(actual.buildSdk, /verify:sdk/);
+  assert.match(actual.buildSdk, /@tabularis\/service-contracts build/);
+  assert.match(actual.buildSdk, /@tabularis\/plugin-api build/);
+  assert.equal(actual.buildDriver, 'tsc');
+  assert.equal(actual.testSdk, 'corepack pnpm build:sdk && node --test tests/sdk.test.mjs');
+  assert.equal(actual.testBootstrap, 'node --test tests/bootstrap/*.test.mjs tests/ci/*.test.mjs');
+  assert.equal(actual.testLive, 'node scripts/live/cli.mjs');
+  assert.equal(actual.serviceContracts, 'workspace:*');
+  assert.equal(actual.uiPluginApi, 'workspace:*');
+  assert.equal(actual.uiServiceContracts, 'workspace:*');
+  assert.equal(actual.yamlPin, '4.1.1');
+  assert.equal(metadata.dependencies['@azure/cosmos'], '4.10.1');
 });
 test('다섯 archive 이름은 기존 플랫폼별 pin과 같은 Node 버전을 가리킨다', () => {
   // given

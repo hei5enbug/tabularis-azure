@@ -70,6 +70,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm test:bootstrap
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm test:sdk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm test:unit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm test:protocol

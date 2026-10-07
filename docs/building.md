@@ -2,7 +2,7 @@
 
 이 안내는 Cosmos 저장소 하나에서 빌드하고 현재 OS용 생산 ZIP을 만드는 방법을 설명합니다.
 
-## 고정 빌드 입력
+## 고정 SDK 입력
 
 | 입력 | 고정값 |
 | --- | --- |
@@ -13,39 +13,39 @@
 | 최소 host runtime | 기본 조회 `0.26.0`, 전체 서비스 `0.26.1-spatial.1` |
 | service protocol / 공개 SDK API | `1` / `0.2.0` |
 
-`build-support/host`는 canonical host의 tracked 빌드 입력 128개를 그대로 보관합니다.
-root의 package·workspace·lock·LICENSE와 tracked `packages/**`만 포함하며 host binary는 포함하지 않습니다.
-`build-support/provenance.json`에는 각 파일의 크기와 SHA256, upstream URL과 아래 revision이 있습니다.
+`build-support/sdk`에는 service-contracts와 public plugin-api를 빌드하는 고정 입력 22개가 있습니다.
+SDK snapshot에는 root와 각 package의 Apache-2.0 license 파일이 포함됩니다.
+`build-support/sdk/provenance.json`은 파일별 크기와 SHA256, 원본 SHA256, upstream 출처를 기록합니다.
 
+- upstream repository: `https://github.com/TabularisDB/tabularis.git`
 - upstream base: `b78a40946f072f6b8f2f1a4c80c1e04ff9b54cd4`
-- host source: `a10ba47979320766f0cb706afd48e6cecd7331e8`
+- canonical host commit: `a10ba47979320766f0cb706afd48e6cecd7331e8`
 
-schema나 SDK를 이 복사본에서 수정하지 마세요.
-canonical host 변경을 수용할 때 출처와 모든 파일 SHA를 함께 갱신해야 합니다.
+schema나 SDK source를 이 snapshot에서 수정하지 마세요.
+canonical source 변경을 수용할 때 원본 출처와 파일별 SHA를 함께 갱신하세요.
 
 ## bootstrap 실행
 
-고정된 Node와 pnpm이 현재 shell에서 실행되도록 준비한 뒤 Cosmos checkout에서 실행합니다.
+고정된 Node와 pnpm을 준비한 뒤 Cosmos checkout에서 실행합니다.
 
 ```sh
 pnpm bootstrap
+pnpm verify:sdk
 pnpm typecheck
 pnpm --dir ui typecheck
 pnpm test:bootstrap
+pnpm test:sdk
 pnpm test:unit
 pnpm test:protocol
 pnpm test:ui
 ```
 
-bootstrap은 먼저 sibling `../tabularis-host`를 확인합니다.
-없으면 검증한 snapshot을 자신이 만든 임시 디렉터리에서 준비한 뒤 발행합니다.
-있으면 tracked 계약·SDK source의 SHA를 확인하고 재사용합니다.
-불일치하거나 다른 실행의 `.tabularis-host-bootstrap.lock`이 있으면 명확히 실패합니다.
-lock을 자동 삭제하거나 기존 sibling을 교체하지 않습니다.
+bootstrap은 SDK 원장을 확인하고 root workspace만 `--frozen-lockfile --ignore-scripts`로 설치합니다.
+그 뒤 service-contracts, plugin-api, 드라이버, UI 순서로 현재 checkout 안에서 빌드합니다.
+별도 host checkout이나 UI 전용 install은 필요하지 않습니다.
 
-계약·SDK filtered install과 Cosmos root·UI install에는 `--frozen-lockfile --ignore-scripts`를 사용합니다.
-공개 의존성 다운로드에는 private 저장소 접근이나 PAT가 필요하지 않습니다.
-bootstrap은 lockfile을 바꾸지 않습니다.
+공개 의존성을 받으려면 네트워크 또는 채워진 package cache가 필요합니다.
+bootstrap은 lockfile을 변경하지 않습니다.
 
 ## 현재 OS용 ZIP 만들기
 

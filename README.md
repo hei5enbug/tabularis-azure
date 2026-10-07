@@ -18,14 +18,17 @@ Node `24.21.0`, pnpm `10.30.3`, Rust `1.96.0`을 준비한 뒤 실행하세요.
 
 ```sh
 pnpm bootstrap
+pnpm verify:sdk
 pnpm typecheck
 pnpm --dir ui typecheck
 pnpm test:bootstrap
+pnpm test:sdk
 ```
 
-bootstrap은 고정된 host 빌드 입력을 sibling `tabularis-host`에 준비하고 계약, SDK, 드라이버, UI를 빌드합니다.
-기존 sibling이 있으면 SDK와 계약 source의 SHA가 같을 때만 재사용하며 덮어쓰지 않습니다.
-고정 source와 생산 ZIP을 만드는 방법은 [빌드 안내](docs/building.md#고정-빌드-입력)를 참고하세요.
+공개 SDK 입력은 `build-support/sdk`에 22개 파일로 고정되어 있습니다.
+bootstrap은 이 원장을 확인한 뒤 root workspace만 frozen install하고 계약, SDK, 드라이버, UI를 빌드합니다.
+다른 저장소를 만들거나 수정하지 않습니다.
+고정 source와 생산 ZIP을 만드는 방법은 [빌드 안내](docs/building.md#고정-sdk-입력)를 참고하세요.
 
 | 패키지 대상 | 현재 실행 근거 |
 | --- | --- |

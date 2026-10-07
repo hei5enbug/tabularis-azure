@@ -281,3 +281,29 @@ Rosetta와 다른 OS의 production 검사는 이번 설치에서 실행하지 �
 이번 설치 검사에서 실제 Azure 데이터 요청과 문서 쓰기는 실행하지 않았다.
 공식 호스트의 기본 읽기 경로와 수정 호스트 전용 문서 CRUD·continuation의 지원 구분은 그대로다.
 이미 실행 중인 이전 MCP 프로세스에는 클라이언트의 재연결이 필요하다.
+
+## 2026-10-07 SDK workspace migration
+
+Node `24.21.0`과 pnpm `10.30.3`으로 lockfile을 갱신한 뒤 frozen install을 통과했습니다.
+설치는 root, UI, service-contracts, plugin-api 네 workspace를 처리했습니다.
+SDK 출처 검사는 revision `a10ba47979320766f0cb706afd48e6cecd7331e8`의 22개 파일을 확인했습니다.
+
+호환 CLI인 `pnpm bootstrap`, `pnpm build`, SDK·driver·UI 개별 빌드, root typecheck와 UI typecheck가 통과했습니다.
+`pnpm test:bootstrap`은 26개, `pnpm test:sdk`는 5개 검사가 모두 통과했습니다.
+이 검사는 로컬 빌드와 합성 입력을 대상으로 했으며 실제 Azure 요청은 실행하지 않았습니다.
+# 저장소 내부 SDK 전환 최종 검증 — 2026-10-07
+
+macOS ARM64에서 Node `24.21.0`과 pnpm `10.30.3`으로 검사했습니다.
+형제 호스트, 기존 `node_modules`, SDK `dist`가 없는 한글·공백 경로의 새 checkout에서
+bootstrap, 드라이버·UI 빌드와 타입 검사가 통과했습니다.
+SDK·bootstrap·CI·unit·protocol 검사 681개와 UI 검사 125개가 통과했습니다.
+기존 SDK와 새 SDK의 JS·타입 선언 산출물은 바이트 단위로 동일했습니다.
+
+같은 checkout에서 생산 ARM64 ZIP을 만들고 빈 PATH·격리된 프로필로 실행했습니다.
+공식 Node archive SHA 검증, ZIP 원장 검사와 초기화·EOF·shutdown이 통과했습니다.
+ZIP의 symlink와 외부 workspace 경로는 각각 0개였습니다.
+기존 `tabularis-host` 소스 128개를 검증한 백업으로 보존한 뒤 해당 폴더를 제거했습니다.
+제거 후 내부 SDK 검증과 설치된 앱의 드라이버 목록 조회가 통과했습니다.
+
+이 검사는 DB 접속이나 쿼리를 실행하지 않았습니다.
+새 경로에 대한 다른 OS 실행과 레지스트리 수용 검증은 수행하지 않았습니다.

@@ -3,160 +3,210 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { bootstrap, commandFor, HOST_COMMIT, prepareHost, readProvenance, verifyFiles } from '../../scripts/bootstrap/index.mjs';
+import { bootstrap, commandFor, NODE_VERSION, PNPM_VERSION } from '../../scripts/sdk-bootstrap.mjs';
+import { SDK_REVISION, readProvenance, verifySdk } from '../../scripts/sdk.mjs';
 
-function fixture(t) {
-  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'tabularis-x1-c 테스트 '));
+const repository = fileURLToPath(new URL('../../', import.meta.url));
+
+function fixture(t, name = '코스모스 checkout with spaces') {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'tabularis-sdk 테스트 '));
   t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
-  const source = path.join(parent, 'cosmos checkout');
-  fs.mkdirSync(source);
-  const files = ['package.json', 'packages/plugin-api/src/index.ts', 'packages/service-contracts/schema/v1/request.json'].map((name, i) => {
-    const bytes = Buffer.from(`synthetic-${i}`);
-    const target = path.join(source, 'build-support/host', name);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, bytes);
-    return { path: name, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), mode: '100644' };
-  });
-  const provenance = { version: 1, host_commit: HOST_COMMIT, files };
-  fs.writeFileSync(path.join(source, 'build-support/provenance.json'), JSON.stringify(provenance));
-  return { parent, source, provenance, host: path.join(parent, 'tabularis-host'), lock: path.join(parent, '.tabularis-host-bootstrap.lock') };
-}
-function observe(action) { try { return { value: action() }; } catch (error) { return { code: error.code }; } }
-function publishFailure(f) {
-  const result = observe(() => prepareHost({ ...f, beforePublish: () => { throw new Error('synthetic-copy-failure'); } }));
-  return { result, entries: fs.readdirSync(f.parent), lock: fs.existsSync(f.lock) };
-}
-function publicationRace(f) {
-  const result = observe(() => prepareHost({ ...f, beforePublish: (_, destination) => fs.mkdirSync(destination) }));
-  return { result, host: fs.readdirSync(f.host), lock: fs.existsSync(f.lock) };
+  const source = path.join(parent, name);
+  fs.mkdirSync(path.join(source, 'build-support'), { recursive: true });
+  fs.cpSync(path.join(repository, 'build-support/sdk'), path.join(source, 'build-support/sdk'), { recursive: true });
+  fs.writeFileSync(path.join(source, 'package.json'), JSON.stringify({ name: '@tabularis/azure' }));
+  return { parent, source, lock: path.join(source, '.sdk-bootstrap.lock') };
 }
 
-test('고정 호스트 snapshot의 모든 바이트는 출처 원장의 SHA와 일치한다', () => {
+function observe(action) {
+  try { return { value: action() }; } catch (error) { return { code: error.code ?? error.message }; }
+}
+
+function pnpmRun(calls) {
+  return (args, cwd) => {
+    calls.push({ args: [...args], cwd });
+    return args[0] === '--version' ? PNPM_VERSION : undefined;
+  };
+}
+
+test('SDK 출처 원장은 고정 revision의 22개 파일을 검증한다', () => {
   // given
-  const source = fileURLToPath(new URL('../../', import.meta.url));
-  const provenance = readProvenance(source);
+  const provenance = readProvenance(repository);
   // when
-  const actual = observe(() => verifyFiles(path.join(source, 'build-support/host'), provenance.files));
+  const actual = verifySdk(repository);
   // then
-  assert.equal(actual.code, undefined);
-  assert.equal(provenance.host_commit, HOST_COMMIT);
-  assert.equal(provenance.files.length, 128);
-  assert.equal(provenance.files.reduce((sum, file) => sum + file.size, 0), 1225818);
-  assert.equal(provenance.upstream_base_sha, 'b78a40946f072f6b8f2f1a4c80c1e04ff9b54cd4');
+  assert.deepEqual(actual.provenance, provenance);
+  assert.equal(provenance.canonical_host_commit, SDK_REVISION);
+  assert.equal(provenance.files.length, 22);
+  assert.equal(path.basename(actual.directory), 'sdk');
 });
-test('sibling이 없으면 한글과 공백 경로에 고정 snapshot을 생성한다', t => {
+
+test('한글과 공백이 포함된 checkout 안에서 root만 설치하고 빌드한다', t => {
   // given
   const f = fixture(t);
-  // when
-  const actual = prepareHost(f);
-  // then
-  assert.deepEqual(actual, { host: f.host, created: true });
-  assert.equal(fs.readFileSync(path.join(f.host, f.provenance.files[1].path), 'utf8'), 'synthetic-1');
-  assert.equal(fs.existsSync(f.lock), false);
-  assert.deepEqual(fs.readdirSync(f.parent).sort(), ['cosmos checkout', 'tabularis-host']);
-});
-test('동일한 SDK와 계약 source가 있는 sibling은 덮어쓰지 않고 재사용한다', t => {
-  // given
-  const f = fixture(t);
-  prepareHost(f);
-  fs.writeFileSync(path.join(f.host, 'package.json'), 'existing-root-preserved');
-  // when
-  const actual = prepareHost(f);
-  // then
-  assert.equal(actual.created, false);
-  assert.equal(fs.readFileSync(path.join(f.host, 'package.json'), 'utf8'), 'existing-root-preserved');
-});
-test('기존 sibling의 source가 다르면 설치를 시작하지 않고 원본을 보존한다', t => {
-  // given
-  const f = fixture(t);
-  prepareHost(f);
-  const file = path.join(f.host, f.provenance.files[1].path);
-  fs.writeFileSync(file, 'mismatch-preserved');
   const calls = [];
   // when
-  const actual = observe(() => bootstrap({ source: f.source, nodeVersion: '24.21.0', run: args => { calls.push(args); return '10.30.3'; }, env: {} }));
+  const actual = bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run: pnpmRun(calls), env: {} });
+  // then
+  assert.deepEqual(actual, { sdk_revision: SDK_REVISION, sdk: path.join(f.source, 'build-support/sdk'), node: NODE_VERSION, pnpm: PNPM_VERSION });
+  assert.deepEqual(calls.map(call => call.args), [
+    ['--version'],
+    ['install', '--frozen-lockfile', '--ignore-scripts'],
+    ['--filter', '@tabularis/service-contracts', 'build'],
+    ['--filter', '@tabularis/plugin-api', 'build'],
+    ['build:driver'],
+    ['--dir', 'ui', 'build'],
+  ]);
+  assert.ok(calls.every(call => call.cwd === f.source));
+  assert.equal(fs.existsSync(f.lock), false);
+  assert.equal(fs.existsSync(path.join(f.parent, 'tabularis-host')), false);
+});
+
+test('원장 파일이 손상되면 설치를 시작하지 않는다', t => {
+  // given
+  const f = fixture(t);
+  const provenance = readProvenance(f.source);
+  const target = path.join(f.source, 'build-support/sdk', provenance.files[0].path);
+  fs.appendFileSync(target, 'tampered');
+  const calls = [];
+  // when
+  const actual = observe(() => bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run: pnpmRun(calls), env: {} }));
   // then
   assert.equal(actual.code, 'SOURCE_MISMATCH');
-  assert.deepEqual(calls, [['--version']]);
-  assert.equal(fs.readFileSync(file, 'utf8'), 'mismatch-preserved');
+  assert.deepEqual(calls.map(call => call.args), [['--version']]);
   assert.equal(fs.existsSync(f.lock), false);
 });
-test('다른 실행의 lock은 탈취하거나 삭제하지 않는다', t => {
+
+test('원장에 없는 SDK 입력을 거부한다', t => {
   // given
   const f = fixture(t);
-  fs.writeFileSync(f.lock, 'foreign-lock');
-  // when
-  const actual = observe(() => prepareHost(f));
-  // then
-  assert.equal(actual.code, 'BOOTSTRAP_LOCKED');
-  assert.equal(fs.readFileSync(f.lock, 'utf8'), 'foreign-lock');
-  assert.equal(fs.existsSync(f.host), false);
-});
-test('부분 생성 실패는 자신이 만든 임시 디렉터리와 lock만 정리한다', t => {
-  // given
-  const f = fixture(t);
-  fs.mkdirSync(path.join(f.parent, 'unrelated'));
-  // when
-  const actual = publishFailure(f);
-  // then
-  assert.equal(actual.lock, false);
-  assert.deepEqual(actual.entries.sort(), ['cosmos checkout', 'unrelated']);
-  assert.equal(actual.result.value, undefined);
-});
-test('발행 직전에 나타난 빈 sibling도 덮어쓰지 않는다', t => {
-  // given
-  const f = fixture(t);
-  // when
-  const actual = publicationRace(f);
-  // then
-  assert.equal(actual.result.code, 'DESTINATION_EXISTS');
-  assert.deepEqual(actual.host, []);
-  assert.equal(actual.lock, false);
-});
-test('bootstrap은 계약과 SDK를 먼저 빌드한 뒤 각 frozen install과 Cosmos 빌드를 실행한다', t => {
-  // given
-  const f = fixture(t);
+  fs.writeFileSync(path.join(f.source, 'build-support/sdk/unrecorded.txt'), 'extra');
   const calls = [];
   // when
-  const actual = bootstrap({ source: f.source, nodeVersion: '24.21.0', run: (args, cwd) => { calls.push({ args, cwd }); return '10.30.3'; }, env: {} });
+  const actual = observe(() => bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run: pnpmRun(calls), env: {} }));
   // then
-  assert.equal(actual.created, true);
-  assert.equal(calls.length, 8);
-  assert.deepEqual(calls[1].args, ['--filter', '@tabularis/service-contracts', '--filter', '@tabularis/plugin-api', 'install', '--frozen-lockfile', '--ignore-scripts']);
-  assert.deepEqual(calls[2].args, ['--filter', '@tabularis/service-contracts', 'build']);
-  assert.deepEqual(calls[3].args, ['--filter', '@tabularis/plugin-api', 'build']);
-  assert.ok(calls.slice(1, 4).every(call => call.cwd === f.host));
-  assert.ok(calls.slice(4).every(call => call.cwd === f.source));
-  assert.deepEqual(calls[5].args, ['--dir', 'ui', 'install', '--frozen-lockfile', '--ignore-scripts']);
-  assert.deepEqual(calls[7].args, ['--dir', 'ui', 'build']);
+  assert.equal(actual.code, 'SOURCE_MISMATCH');
+  assert.deepEqual(calls.map(call => call.args), [['--version']]);
 });
-for (const [nodeVersion, pnpmVersion, code] of [['24.11.0', '10.30.3', 'NODE_VERSION_MISMATCH'], ['24.21.0', '10.0.0', 'PNPM_VERSION_MISMATCH']]) {
-  test(`${code}이면 sibling 생성 전에 거부한다`, t => {
+
+test('SDK 원장 파일을 가리키는 symlink를 거부한다', t => {
+  // given
+  const f = fixture(t);
+  const provenance = readProvenance(f.source);
+  const target = path.join(f.source, 'build-support/sdk', provenance.files[0].path);
+  const outside = path.join(f.parent, 'outside.txt');
+  fs.writeFileSync(outside, 'outside');
+  fs.unlinkSync(target);
+  try { fs.symlinkSync(outside, target); } catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) return t.skip('이 환경에서는 symlink를 만들 수 없습니다');
+    throw error;
+  }
+  const calls = [];
+  // when
+  const actual = observe(() => bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run: pnpmRun(calls), env: {} }));
+  // then
+  assert.equal(actual.code, 'SOURCE_MISMATCH');
+  assert.deepEqual(calls.map(call => call.args), [['--version']]);
+});
+
+test('기존 다른 실행의 lock을 보존하고 bootstrap을 거부한다', t => {
+  // given
+  const f = fixture(t);
+  fs.writeFileSync(f.lock, 'foreign-owner');
+  const calls = [];
+  // when
+  const actual = observe(() => bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run: pnpmRun(calls), env: {} }));
+  // then
+  assert.equal(actual.code, 'BOOTSTRAP_LOCKED');
+  assert.equal(fs.readFileSync(f.lock, 'utf8'), 'foreign-owner');
+  assert.deepEqual(calls.map(call => call.args), [['--version']]);
+});
+
+test('동시 bootstrap은 활성 lock을 사용하고 소유한 lock만 정리한다', t => {
+  // given
+  const f = fixture(t);
+  let concurrent;
+  const run = (args, cwd) => {
+    if (args[0] === '--version') return PNPM_VERSION;
+    if (!concurrent) {
+      concurrent = observe(() => bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run: () => PNPM_VERSION, env: {} }));
+    }
+    return undefined;
+  };
+  // when
+  const actual = bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run, env: {} });
+  // then
+  assert.equal(actual.sdk_revision, SDK_REVISION);
+  assert.equal(concurrent.code, 'BOOTSTRAP_LOCKED');
+  assert.equal(fs.existsSync(f.lock), false);
+});
+
+test('명령 실패 뒤 자신이 만든 lock만 제거한다', t => {
+  // given
+  const f = fixture(t);
+  const unrelated = path.join(f.source, 'keep.txt');
+  fs.writeFileSync(unrelated, 'preserve');
+  const run = args => {
+    if (args[0] === '--version') return PNPM_VERSION;
+    const error = new Error('COMMAND_FAILED');
+    error.code = 'COMMAND_FAILED';
+    throw error;
+  };
+  // when
+  const actual = observe(() => bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run, env: {} }));
+  // then
+  assert.equal(actual.code, 'COMMAND_FAILED');
+  assert.equal(fs.existsSync(f.lock), false);
+  assert.equal(fs.readFileSync(unrelated, 'utf8'), 'preserve');
+});
+
+test('lock 경로가 실행 중 교체되면 다른 소유자의 lock을 보존한다', t => {
+  // given
+  const f = fixture(t);
+  let replaced = false;
+  const run = args => {
+    if (args[0] === '--version') return PNPM_VERSION;
+    if (!replaced) {
+      fs.renameSync(f.lock, `${f.lock}.owned`);
+      fs.writeFileSync(f.lock, 'replacement-owner');
+      replaced = true;
+    }
+    return undefined;
+  };
+  // when
+  const actual = bootstrap({ source: f.source, nodeVersion: NODE_VERSION, run, env: {} });
+  // then
+  assert.equal(actual.sdk_revision, SDK_REVISION);
+  assert.equal(fs.readFileSync(f.lock, 'utf8'), 'replacement-owner');
+  assert.equal(fs.existsSync(`${f.lock}.owned`), true);
+});
+
+for (const [nodeVersion, pnpmVersion, code] of [
+  ['24.20.0', PNPM_VERSION, 'NODE_VERSION_MISMATCH'],
+  [NODE_VERSION, '10.30.2', 'PNPM_VERSION_MISMATCH'],
+]) {
+  test(`고정 도구 버전이 다르면 ${code}로 중단한다`, t => {
     // given
     const f = fixture(t);
+    const calls = [];
+    const run = pnpmRun(calls);
     // when
-    const actual = observe(() => bootstrap({ source: f.source, nodeVersion, run: () => pnpmVersion, env: {} }));
+    const actual = observe(() => bootstrap({ source: f.source, nodeVersion, run: (args, cwd) => args[0] === '--version' ? pnpmVersion : run(args, cwd), env: {} }));
     // then
     assert.equal(actual.code, code);
-    assert.equal(fs.existsSync(f.host), false);
+    assert.equal(fs.existsSync(f.lock), false);
   });
 }
-test('Windows pnpm 실행은 고정 cmd 명령을 쓰며 사용자 경로를 명령 문자열에 넣지 않는다', () => {
+
+test('Windows 명령은 고정 실행 파일을 쓰고 셸 제어 문자를 거부한다', () => {
   // given
   const args = ['--filter', '@tabularis/plugin-api', 'build'];
   // when
   const actual = commandFor(args, 'win32', 'C:\\Windows');
   // then
   assert.equal(actual.executable, 'C:\\Windows\\System32\\cmd.exe');
-  assert.deepEqual(actual.args, ['/d', '/s', '/c', 'pnpm --filter @tabularis/plugin-api build']);
-});
-test('pnpm 인자에 셸 제어 문자가 있으면 거부한다', () => {
-  // given
-  const args = ['build&echo'];
-  // when
-  const actual = observe(() => commandFor(args, 'win32', 'C:\\Windows'));
-  // then
-  assert.equal(actual.code, 'INVALID_COMMAND');
+  assert.deepEqual(actual.args, ['/d', '/s', '/c', 'corepack pnpm --filter @tabularis/plugin-api build']);
+  assert.equal(observe(() => commandFor(['build&whoami'], 'win32', 'C:\\Windows')).code, 'INVALID_COMMAND');
+  assert.equal(observe(() => commandFor(['--dir', '한글 경로'], 'win32', 'C:\\Windows')).code, 'INVALID_COMMAND');
 });

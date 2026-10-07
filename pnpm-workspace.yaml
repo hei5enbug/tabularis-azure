@@ -1,5 +1,6 @@
 packages:
   - ui
+  - build-support/sdk/packages/*
 
 overrides:
   'vite>esbuild': 0.28.1

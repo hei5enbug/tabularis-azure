@@ -8,8 +8,12 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "tsc",
+    "verify:sdk": "node scripts/sdk.mjs",
+    "build:sdk": "corepack pnpm verify:sdk && corepack pnpm --filter @tabularis/service-contracts build && corepack pnpm --filter @tabularis/plugin-api build",
+    "build:driver": "tsc",
+    "typecheck": "corepack pnpm build:sdk && tsc --noEmit",
+    "build": "corepack pnpm build:sdk && corepack pnpm build:driver",
+    "test:sdk": "corepack pnpm build:sdk && node --test tests/sdk.test.mjs",
     "start": "node --max-old-space-size=512 dist/index.js",
     "test:unit": "corepack pnpm build && node --test tests/unit/*.test.mjs",
     "test:protocol": "corepack pnpm build && node --test tests/protocol/*.test.mjs",
@@ -23,11 +27,12 @@
   },
   "dependencies": {
     "@azure/cosmos": "4.10.1",
-    "@tabularis/service-contracts": "link:../tabularis-host/packages/service-contracts",
+    "@tabularis/service-contracts": "workspace:*",
     "ajv": "8.20.0"
   },
   "devDependencies": {
     "@types/node": "24.12.0",
+    "js-yaml": "4.1.1",
     "typescript": "5.9.3"
   },
   "packageManager": "pnpm@10.30.3"

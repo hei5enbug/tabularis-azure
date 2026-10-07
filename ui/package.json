@@ -4,12 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "build": "corepack pnpm --dir .. build:sdk && tsc --noEmit && vite build",
+    "typecheck": "corepack pnpm --dir .. build:sdk && tsc --noEmit",
+    "test": "corepack pnpm --dir .. build:sdk && vitest run"
   },
   "devDependencies": {
-    "@tabularis/plugin-api": "link:../../tabularis-host/packages/plugin-api",
+    "@tabularis/plugin-api": "workspace:*",
+    "@tabularis/service-contracts": "workspace:*",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.2.0",

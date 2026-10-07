@@ -24,6 +24,16 @@ SDK snapshot에는 root와 각 package의 Apache-2.0 license 파일이 포함됩
 schema나 SDK source를 이 snapshot에서 수정하지 마세요.
 canonical source 변경을 수용할 때 원본 출처와 파일별 SHA를 함께 갱신하세요.
 
+## 공식 플러그인 계약
+
+[공식 플러그인 가이드](https://github.com/TabularisDB/tabularis/blob/main/plugins/PLUGIN_GUIDE.md)와
+[플러그인 시스템 문서](https://tabularis.dev/wiki/plugins)를 기준으로 배포합니다.
+ZIP 루트에는 `.tabularium`과 상대 경로의 실행 파일이 있고, 드라이버는 줄 단위 JSON-RPC를 표준입출력으로 처리합니다.
+UI는 `__tabularis_plugin__` IIFE로 빌드하며 React·JSX runtime·plugin API는 호스트 제공 전역으로 남깁니다.
+UI에서 Tauri API를 직접 호출하지 않습니다.
+SDK·Node 런타임은 배포 패키지 안에서 해결하고 개인 설치 경로나 작업 디렉터리를 참조하지 않습니다.
+Azure CLI는 해당 인증 방식을 선택할 때만 필요하며 실행 환경의 PATH로 찾습니다.
+
 ## bootstrap 실행
 
 고정된 Node와 pnpm을 준비한 뒤 Cosmos checkout에서 실행합니다.

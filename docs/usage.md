@@ -12,6 +12,8 @@ Azure CLI를 선택하면 이 컴퓨터에서 `az login`을 먼저 실행하고 
 드라이버가 해당 테넌트의 Cosmos 토큰을 메모리로 받아 사용합니다.
 Azure CLI가 관리하는 로그인 캐시를 플러그인이 복사하거나 Git에 저장하지 않습니다.
 Cosmos 데이터 읽기 권한은 별도로 필요합니다. Windows에서는 공식 Azure CLI 설치를 사용합니다.
+Azure CLI 인증을 선택한 경우에만 CLI가 필요하며, 플러그인 프로세스의 `PATH`에서 찾습니다.
+설치 디렉터리를 추측하지 않습니다. GUI 실행 환경에도 공식 CLI의 실행 디렉터리가 포함돼야 합니다.
 
 Cosmos 작업 공간이나 SQL 편집기에서 `SELECT * FROM c`처럼 Cosmos SQL을 실행합니다.
 `c`는 연결에 지정한 기본 컨테이너의 별칭입니다. SQL을 SQL Server 문법으로 변환하지 않습니다.

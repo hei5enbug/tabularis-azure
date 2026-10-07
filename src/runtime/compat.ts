@@ -30,18 +30,26 @@ export function resolveLegacyContext(request: RpcRequest): ResolvedContext {
   return context;
 }
 
-export function runAzureCli(args: string[]): Promise<string> {
-  const candidates = process.platform === "win32" ? [] : process.platform === "darwin" ? ["/opt/homebrew/bin/az", "/usr/local/bin/az"] : ["/usr/bin/az", "/usr/local/bin/az"];
-  let executable = candidates.find(file => existsSync(file)) ?? "az";
-  let prefix: string[] = [];
-  if (process.platform === "win32") {
-    const roots = [process.env.ProgramFiles, process.env['ProgramFiles(x86)']].filter((value): value is string => !!value && path.isAbsolute(value));
-    const python = roots.map(root => path.join(root, 'Microsoft SDKs', 'Azure', 'CLI2', 'python.exe')).find(file => existsSync(file));
-    if (!python) return Promise.reject(new DriverError("AUTH_REQUIRED", "Install the official Azure CLI for Windows before using Azure CLI authentication."));
-    executable = python; prefix = ['-IBm', 'azure.cli'];
+export function azureCliCommand(platform: string, searchPath: string, present = existsSync): { executable: string; prefix: string[] } {
+  const paths = platform === "win32" ? path.win32 : path.posix;
+  const separator = platform === "win32" ? ";" : ":";
+  for (const directory of searchPath.split(separator).filter(value => paths.isAbsolute(value))) {
+    const executable = paths.join(directory, platform === "win32" ? "az.exe" : "az");
+    if (present(executable)) return { executable, prefix: [] };
+    if (platform === "win32" && present(paths.join(directory, "az.cmd"))) {
+      const python = paths.resolve(directory, "..", "python.exe");
+      if (present(python)) return { executable: python, prefix: ["-IBm", "azure.cli"] };
+    }
   }
+  throw new DriverError("AUTH_REQUIRED", "Make the official Azure CLI available on the plugin process PATH before using Azure CLI authentication.");
+}
+
+export function runAzureCli(args: string[]): Promise<string> {
+  let command: ReturnType<typeof azureCliCommand>;
+  try { command = azureCliCommand(process.platform, process.env.PATH ?? ""); }
+  catch (error) { return Promise.reject(error); }
   return new Promise((resolve, reject) => {
-    execFile(executable, [...prefix, ...args], { timeout: 20_000, maxBuffer: 128 * 1024, windowsHide: true, encoding: "utf8", shell: false }, (error, stdout) => {
+    execFile(command.executable, [...command.prefix, ...args], { timeout: 20_000, maxBuffer: 128 * 1024, windowsHide: true, encoding: "utf8", shell: false }, (error, stdout) => {
       if (error) reject(new DriverError("AUTH_REQUIRED", "Azure CLI authentication failed. Install Azure CLI, run az login, and select the intended tenant."));
       else resolve(stdout);
     });

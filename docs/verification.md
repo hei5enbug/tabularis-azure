@@ -31,9 +31,9 @@ Cosmos 설치 뒤 선언된 CSS asset도 host asset reader로 확인했습니다
 | Cosmos macOS arm64 | 50,405,344 B | 9,121 | `967b46294068ac5fe4ddb92ccfe03bf1238ddb50bd2eab5c05d8a2398d749933` |
 | Cosmos macOS x64 | 51,486,652 B | 9,121 | `64b680cde94f68f7ba8253b0f721e640650c370c7bbe642a0ae17f4b629c3220` |
 
-원본 실행 로그는 main이 수용한 `/tmp/tabularis-t0e-h-native-production-first.log`입니다.
+원본 실행 로그는 검증 실행의 별도 보관 자료입니다. 개인 파일 경로는 공개 문서에 포함하지 않습니다.
 실행에는 79.52초가 걸렸습니다.
-이 경로는 당시의 로컬 증거 위치이며 checkout에 배포되는 artifact가 아닙니다.
+이 로그는 당시의 실행 근거이며 checkout에 배포되는 artifact가 아닙니다.
 최종 CI artifact에는 해당 실행에서 생성한 ZIP·checksum·release 원장·production 보고서를 따로 보관합니다.
 
 ## 아직 확인하지 않은 항목
@@ -62,9 +62,8 @@ bootstrap·CI 전용 검사 25개는 source SHA·lock·no-overwrite·pin·cache 
 최초 검사에서는 macOS realpath 별칭에 대한 test 기대값 한 건이 실패했습니다.
 실제 canonical Python 경로를 기대하도록 교정한 뒤 25개가 모두 통과했으며 원본 실패 로그를 보존했습니다.
 
-실행 로그는 `/tmp/tabularis-x1-c-bootstrap-first.log`와
-`/tmp/tabularis-x1-c-isolated-*-first.log`에 있습니다.
-이 위치는 로컬 실행 근거이며 저장소에 포함된 CI artifact가 아닙니다.
+bootstrap과 독립 환경의 실행 로그는 검증 실행의 별도 보관 자료입니다.
+이 로그는 실행 근거이며 저장소에 포함된 CI artifact가 아닙니다.
 
 ## 운영체제별 후속 실행
 
@@ -307,3 +306,17 @@ ZIP의 symlink와 외부 workspace 경로는 각각 0개였습니다.
 
 이 검사는 DB 접속이나 쿼리를 실행하지 않았습니다.
 새 경로에 대한 다른 OS 실행과 레지스트리 수용 검증은 수행하지 않았습니다.
+# 개인 경로 제거와 공식 가이드 확인 — 2026-10-07
+
+[공식 Plugin Guide](https://github.com/TabularisDB/tabularis/blob/main/plugins/PLUGIN_GUIDE.md)와
+[Plugin System 문서](https://tabularis.dev/wiki/plugins)를 다시 확인했습니다.
+상대 경로 배포, IIFE 전역 이름·externals, 호스트 API 경계와 줄 단위 JSON-RPC 계약을 대조했습니다.
+개인 절대 경로와 특정 패키지 관리자의 CLI 설치 위치를 전제하는 런타임 탐색을 제거했습니다.
+Azure CLI 인증은 선택 사항이며 플러그인 프로세스 PATH의 절대 경로에서 공식 CLI를 찾습니다.
+Windows 명령 스크립트는 같은 배포본의 Python으로 셸 없이 실행합니다.
+
+경로 탐색·호환성·프로토콜 검사 13개와 TypeScript 빌드가 통과했습니다.
+ARM64 생산 ZIP의 초기화·EOF·shutdown, symlink 0개·외부 workspace 경로 0개를 확인했습니다.
+ZIP 원장 8,604개 파일을 검증하고 로컬 설치에 반영했습니다.
+이번 검사는 실제 Azure CLI 로그인, DB 접속이나 쿼리를 실행하지 않았습니다.
+레지스트리 수용 검증은 기존 미확인 상태입니다.

@@ -2,8 +2,26 @@
 
 이 기록은 실행한 검사와 아직 실행하지 않은 검사를 구분합니다.
 mock 통과는 실제 Azure 권한·TLS·Entra 동작의 증거가 아닙니다.
-기존 CLI 로그인의 최소 읽기는 확인했습니다. 쓰기·페이지 재개·인증 갱신을 포함한 전체 검증은 미완료입니다.
+기존 CLI 로그인의 최소 읽기는 이전 실행에서 확인했습니다. 이번에는 emulator에서 문서 CRUD를 검증했으며,
+실제 Azure의 쓰기·페이지 재개·인증 갱신 검증은 남아 있습니다.
 GitHub Actions는 수동 실행하는 선택 사항입니다. 실제 OS에서 직접 실행한 검증도 환경과 결과를 기록합니다.
+
+## Testcontainers 후속 검증 — 2026-10-11
+
+사용자가 제안한 Testcontainers 방식으로 전용 Cosmos vNext emulator를 실행했습니다.
+임시 데이터베이스에서 실제 SDK와 제품 runtime을 연결한 9개 시나리오가 모두 통과했습니다.
+문서 생성·조회·교체·삭제, 같은 ID의 파티션 구분, ETag 충돌, 읽기 전용 거부,
+매개변수 쿼리의 JSON 타입과 빈 결과를 확인했습니다.
+emulator가 continuation token 없이 반환한 5행은 전체 snapshot에 보존했고 첫 페이지에는 2행을 노출했습니다.
+이는 Azure의 native continuation을 검증한 결과는 아닙니다.
+
+같은 작업에서 unit 640개, protocol 14개, UI 125개와 타입·빌드 검사가 통과했습니다.
+Node 24.21.0을 동봉한 macOS ARM64·x64 생산 ZIP의 격리 실행도 확인했습니다.
+이전 표의 숫자와 합산하지 않습니다.
+
+검사 코드는 [컨테이너 실행 안내](../tests/containers/README.md)에 있습니다.
+이미지 digest와 Testcontainers 버전을 고정했고 기존 프로필·Azure 로그인·실제 계정에는 접근하지 않았습니다.
+Entra 로그인·갱신, Azure RBAC, 과금 RU, index policy와 실제 클라우드 continuation 검증은 여전히 별도입니다.
 
 ## 관찰한 검사
 
